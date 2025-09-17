@@ -11,7 +11,7 @@ export default function SettingsScreen() {
     const [isToggled, setIsToggled] = useState(false);
 
     const toggleFeature = (featureName: string, isEnabled: boolean) => {
-        console.log("toggleFeature called with", featureName, isEnabled);
+        // console.log("toggleFeature called with", featureName, isEnabled);
         switch (featureName) {
             case "EmployeeType":
                 if (isEnabled) {
