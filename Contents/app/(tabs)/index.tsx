@@ -30,7 +30,18 @@ export default function HomeScreen() {
   );
 
   return (
-    
+    <ThemedView style={styles.container}>
+      <ThemedText type="title" style={styles.title}>
+        Medications
+      </ThemedText>
+      <FlatList
+        data={medications}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
+      />
+    </ThemedView>
   );
 }
 
