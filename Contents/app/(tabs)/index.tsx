@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { FlatList, TouchableOpacity, StyleSheet, useColorScheme, Text } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
+import { WarningPopup } from '../warningPopup.tsx';
 
 const medications = [
   { id: "1", name: "Epinephrine" },
@@ -22,7 +23,7 @@ export default function HomeScreen() {
   };
 
   const renderItem = ({ item }: { item: { id: string; name: string } }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={[styles.itemContainer, scheme === "dark" ? styles.itemContainerDark : styles.itemContainerLight]}
       onPress={() => handlePress(item.name)} activeOpacity={0.7}>
       <Text style={[styles.itemText, scheme === "dark" ? styles.itemTextDark : styles.itemTextLight]}>
@@ -33,6 +34,7 @@ export default function HomeScreen() {
 
   return (
     <ThemedView style={styles.container}>
+
       <ThemedText type="title" style={styles.title}>
         Medications
       </ThemedText>
@@ -43,6 +45,7 @@ export default function HomeScreen() {
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
       />
+      <WarningPopup />
     </ThemedView>
   );
 }
