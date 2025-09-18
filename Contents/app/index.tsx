@@ -11,15 +11,15 @@ const NotificationScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>This is a notification!</Text>
-      <Button title="Continue" onPress={onClose} />
+      <Text style={styles.text}>Warning this App is Advisory Only!</Text>
+      <Button title="Continue" color='maroon' onPress={onClose} />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "white" },
-  text: { fontSize: 20, marginBottom: 20 }
+  text: { fontSize: 20, color: 'red', marginBottom: 20 }
 });
 
 export default NotificationScreen;
