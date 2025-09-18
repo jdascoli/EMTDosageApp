@@ -1,4 +1,5 @@
 import React from "react";
+import { router } from 'expo-router';
 import { FlatList, TouchableOpacity, StyleSheet, useColorScheme, Text } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -17,6 +18,7 @@ export default function HomeScreen() {
   const handlePress = (medName: string) => {
     console.log(`Clicked: ${medName}`);
     // TODO: navigate to specific dosage calculator screen
+    router.push(`/medication/${medName}`);
   };
 
   const renderItem = ({ item }: { item: { id: string; name: string } }) => (
@@ -51,7 +53,7 @@ const styles = StyleSheet.create({
   list: { gap: 12 },
   itemContainer: { padding: 16, borderRadius: 12, borderWidth: 1, minHeight: 56 },
   itemContainerLight: { backgroundColor: "#f8f9fa", borderColor: "#e9ecef" },
-  itemContainerDark: { backgroundColor: "#2d3748", borderColor: "#  4a5568" },
+  itemContainerDark: { backgroundColor: "#2d3748", borderColor: "#4a5568" },
   itemText: { fontSize: 16, fontWeight: "500" },
   itemTextLight: { color: "#2d3748" },
   itemTextDark: {color: "#f7fafc" }
