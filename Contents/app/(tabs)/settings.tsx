@@ -1,8 +1,6 @@
 import { Image } from 'expo-image';
 import React, { useState } from 'react'; // added for useState
-import { Platform, StyleSheet, View, Text, Button} from 'react-native';
-
-import { HelloWave } from '@/components/HelloWave';
+import { StyleSheet, View, Text, Button} from 'react-native';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -76,7 +74,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
   },
     leftAlignedButton: {
-        alignSelf: 'flex-start', // Align container to the left
+        alignSelf: 'flex-start',
         width: 100,
     },
 });
