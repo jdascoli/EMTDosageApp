@@ -34,7 +34,7 @@ export default function HomeScreen() {
 
   return (
     <ThemedView style={styles.container}>
-
+      <Text></Text> // Blank space to separate from top of screen
       <ThemedText type="title" style={styles.title}>
         Medications
       </ThemedText>

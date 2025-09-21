@@ -9,6 +9,7 @@ export default function MedicationsDetailScreen() {
 
     return (
         <ThemedView>
+            <Text></Text> // Blank space to separate from top of screen
             <TouchableOpacity onPress={() => router.back()}>
                 <Text style={{fontSize: 16, color: '#007AFF', padding: 10}}>← Back</Text>
             </TouchableOpacity>
