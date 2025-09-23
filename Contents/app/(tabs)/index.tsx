@@ -5,12 +5,14 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { WarningPopup } from '../warningPopup.tsx';
 
+// List is naturally in alphabetical order
+// Boolean added for EMT/Paramedic Modes
 const medications = [
-  { id: "1", name: "Epinephrine" },
-  { id: "2", name: "Aspirin" },
-  { id: "3", name: "Nitroglycerin" },
-  { id: "4", name: "Albuterol" },
-  { id: "5", name: "Naloxone" },
+    { id: "1", name: "Albuterol", isParamedic: false },
+    { id: "2", name: "Aspirin", isParamedic: true },
+    { id: "3", name: "Epinephrine", isParamedic: false },
+    { id: "4", name: "Naloxone", isParamedic: true },
+    { id: "5", name: "Nitroglycerin", isParamedic: false },
 ];
 
 export default function HomeScreen() {
