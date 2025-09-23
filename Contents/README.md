@@ -13,7 +13,7 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 2. Install dependencies
 
    ```bash
-   npm install
+   npm install --save-dev @types/react@^19.1.0
    ```
 
 3. Start the app

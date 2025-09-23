@@ -18,7 +18,6 @@ export default function HomeScreen() {
 
   const handlePress = (medName: string) => {
     console.log(`Clicked: ${medName}`);
-    // TODO: navigate to specific dosage calculator screen
     router.push(`/medication/${medName}`);
   };
 
