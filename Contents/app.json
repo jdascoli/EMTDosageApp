@@ -4,7 +4,6 @@
     "slug": "Contents",
     "version": "0.1.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
     "scheme": "contents",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
