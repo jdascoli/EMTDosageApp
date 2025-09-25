@@ -27,7 +27,6 @@ export default function SettingsScreen() {
                 console.log("Unknown feature");
         }
     };
-    const { isToggled, setIsToggled } = useState(false);
 
     // Running Code
     return (
