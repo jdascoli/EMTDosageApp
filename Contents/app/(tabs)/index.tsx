@@ -34,10 +34,6 @@ export default function HomeScreen() {
     setSearch("");
   }
 
-  const filteredMeds = medications.filter((med) =>
-    med.name.toLowerCase().includes(search.toLowerCase())
-  );
-
   const renderItem = ({ item }: { item: { id: string; name: string } }) => (
     <TouchableOpacity
       style={[styles.itemContainer, scheme === "dark" ? styles.itemContainerDark : styles.itemContainerLight]}
@@ -65,7 +61,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
   )}
       </View>
-      <FlatList data={filteredMeds} renderItem={renderItem} keyExtractor={(item) => item.id}
+      <FlatList data={medications} renderItem={renderItem} keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}/>
        {showWarning && <WarningPopup onClose={handleCloseWarning} />}
     </ThemedView>
