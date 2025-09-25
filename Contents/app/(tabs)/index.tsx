@@ -1,6 +1,6 @@
-import React from "react";
+import { useState } from "react";
 import { router } from 'expo-router';
-import { FlatList, TouchableOpacity, StyleSheet, useColorScheme, Text } from "react-native";
+import { FlatList, TouchableOpacity, StyleSheet, useColorScheme, Text, View, TextInput } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { WarningPopup } from '../warningPopup.tsx';
