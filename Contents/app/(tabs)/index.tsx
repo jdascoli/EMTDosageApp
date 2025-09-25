@@ -13,6 +13,10 @@ const medications = [
   { id: "5", name: "Naloxone" },
 ];
 
+function alphabeticalList() {
+  return medications.slice().sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export default function HomeScreen() {
   const scheme = useColorScheme();
 
