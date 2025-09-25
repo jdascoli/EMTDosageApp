@@ -43,7 +43,7 @@ export default function HomeScreen() {
         Medications
       </ThemedText>
       <FlatList
-        data={medications}
+        data={alphabeticalList()}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
