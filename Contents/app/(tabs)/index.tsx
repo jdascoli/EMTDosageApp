@@ -22,6 +22,10 @@ export default function HomeScreen() {
     router.push(`/medication/${medName}`);
   };
 
+  const handleCancelSearch = () => {
+    setSearch("");
+  }
+
   const filteredMeds = medications.filter((med) =>
     med.name.toLowerCase().includes(search.toLowerCase())
   );
@@ -55,6 +59,14 @@ export default function HomeScreen() {
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
       />
+      {/* */}
+      {search.length > 0 && (
+        <View style={styles.cancelButtonContainer}>
+          <TouchableOpacity onPress={handleCancelSearch} style={styles.cancelButton}>
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      )}
       <WarningPopup />
     </ThemedView>
   );
@@ -73,5 +85,18 @@ const styles = StyleSheet.create({
   itemContainerDark: { backgroundColor: "#2d3748", borderColor: "#4a5568" },
   itemText: { fontSize: 16, fontWeight: "500" },
   itemTextLight: { color: "#2d3748" },
-  itemTextDark: {color: "#f7fafc" }
+  itemTextDark: {color: "#f7fafc" },
+  cancelButtonContainer: { 
+    alignItems: 'flex-end', marginTop: 10,},
+  cancelButton: {
+    backgroundColor: '#007bff',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+  },
+  cancelButtonText: {
+    color:'#ffffff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
 });
