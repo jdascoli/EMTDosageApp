@@ -26,6 +26,10 @@ export default function HomeScreen() {
     router.push(`/medication/${medName}`);
   };
 
+  const handleCancelSearch = () => {
+    setSearch("");
+  }
+
   const renderItem = ({ item }: { item: { id: string; name: string } }) => (
     <TouchableOpacity
       style={[styles.itemContainer, scheme === "dark" ? styles.itemContainerDark : styles.itemContainerLight]}
@@ -63,5 +67,18 @@ const styles = StyleSheet.create({
   itemContainerDark: { backgroundColor: "#2d3748", borderColor: "#4a5568" },
   itemText: { fontSize: 16, fontWeight: "500" },
   itemTextLight: { color: "#2d3748" },
-  itemTextDark: {color: "#f7fafc" }
+  itemTextDark: {color: "#f7fafc" },
+  cancelButtonContainer: { 
+    alignItems: 'flex-end', marginTop: 10,},
+  cancelButton: {
+    backgroundColor: '#007bff',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+  },
+  cancelButtonText: {
+    color:'#ffffff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
 });
