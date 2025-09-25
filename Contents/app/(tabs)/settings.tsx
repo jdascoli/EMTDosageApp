@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import React, { useState } from 'react'; // added for useState
-import { StyleSheet, View, Text, Button} from 'react-native';
+import { StyleSheet, View, Text, Switch} from 'react-native';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -27,6 +27,7 @@ export default function SettingsScreen() {
                 console.log("Unknown feature");
         }
     };
+    const { isToggled, setIsToggled } = useState(false);
 
     // Running Code
     return (
@@ -44,11 +45,14 @@ export default function SettingsScreen() {
           <ThemedView style={styles.stepContainer}>
             <ThemedText type="subtitle">Change Mode</ThemedText>
           </ThemedView>
-          <View style={styles.leftAlignedButton}>
+          <View style={styles.switchStyle}>
             <Text>{isToggled ? 'Paramedic' : 'EMT'}</Text>
-            <Button
-              title="Toggle"
-              onPress={() => toggleFeature("EmployeeType", !isToggled)}
+            <Switch
+              trackColor={{ false: '#767577', true: '#81b0ff' }}
+              thumbColor={isToggled ? '#f5dd4b' : '#f4f3f4'}
+              ios_backgroundColor="#3e3e3e"
+              onValueChange={setIsToggled}
+              value={isToggled}
             />
           </View>
 
@@ -73,10 +77,10 @@ const styles = StyleSheet.create({
     left: 0,
     position: 'absolute',
   },
-    leftAlignedButton: {
-        alignSelf: 'flex-start',
-        width: 100,
-    },
+  switchStyle: {
+      alignItems: 'flex-start',
+      paddingLeft: 0
+  },
 });
 
 

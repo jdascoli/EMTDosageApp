@@ -8,12 +8,16 @@ import { WarningPopup } from '../warningPopup.tsx';
 // List is naturally in alphabetical order
 // Boolean added for EMT/Paramedic Modes
 const medications = [
-    { id: "1", name: "Albuterol", isParamedic: false },
-    { id: "2", name: "Aspirin", isParamedic: true },
-    { id: "3", name: "Epinephrine", isParamedic: false },
-    { id: "4", name: "Naloxone", isParamedic: true },
-    { id: "5", name: "Nitroglycerin", isParamedic: false },
+  { id: 1, name: "Epinephrine" },
+  { id: 2, name: "Aspirin" },
+  { id: 3, name: "Nitroglycerin" },
+  { id: 4, name: "Albuterol" },
+  { id: 5, name: "Naloxone" },
 ];
+
+function alphabeticalList(){
+    return medications.slice().sort((a, b) => a.name.localeCompare(b.name));
+};
 
 export default function HomeScreen() {
   const scheme = useColorScheme();
@@ -41,7 +45,7 @@ export default function HomeScreen() {
         Medications
       </ThemedText>
       <FlatList
-        data={medications}
+        data={alphabeticalList()}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
