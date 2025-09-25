@@ -2,13 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, Modal, Button, StyleSheet } from 'react-native';
 
 // Exported to be used in index.tsx
+// TODO: Need to add global state to stop pop-ups after first time.
 export const WarningPopup: React.FC = () => {
   const [isPopupVisible, setIsPopupVisible] = useState<boolean>(false);
+  const [isRead, setIsRead] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsPopupVisible(true);
-    }, 2000);
+    }, 1000); // Pop-up Appears after 1 second
 
     return () => clearTimeout(timer);
   }, []);
@@ -16,9 +18,12 @@ export const WarningPopup: React.FC = () => {
   // Closes Popup
   const closePopup = () => {
     setIsPopupVisible(false);
+    setIsRead(true);
   };
 
-  return (
+  // Stops the warning from loading if already read, resets when app is closed
+  if (isRead) return null;
+  else return (
     <View style={styles.container}>
       <Modal
         animationType="fade"

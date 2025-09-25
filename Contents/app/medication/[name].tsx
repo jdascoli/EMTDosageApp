@@ -8,23 +8,19 @@ export default function MedicationsDetailScreen() {
     const { name } = useLocalSearchParams();
 
     return (
-        <ThemedView style={styles.container}>
-            {/* Header */}
-            <View style={styles.header}>
-                <ThemedText type="title" style={styles.headerTitle}>
-                    {name}
-                </ThemedText>
-                <TouchableOpacity onPress={() => router.back()}>
-                    <Text style={styles.backButtonText}>Back</Text>
-                </TouchableOpacity>
-            </View>
+        <ThemedView>
+            <Text></Text> // Blank space to separate from top of screen
+            <TouchableOpacity onPress={() => router.back()}>
+                <Text style={{fontSize: 16, color: '#007AFF', padding: 10}}>← Back</Text>
+            </TouchableOpacity>
 
-            {/*Main Content Area*/}
-            <View style={styles.content}>
-                <ThemedText style={styles.calculatorText}>
-                    Calculate start
-                </ThemedText>
-            </View>
+            <ThemedText type="title">
+                {name}
+            </ThemedText>
+
+            <Text>
+                This is the dosage calculator screen for {name}.
+            </Text>
         </ThemedView>
     );
 }
