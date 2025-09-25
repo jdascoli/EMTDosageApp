@@ -1,6 +1,6 @@
-import { useState } from "react";
+import React from "react";
 import { router } from 'expo-router';
-import { FlatList, TouchableOpacity, StyleSheet, useColorScheme, Text, View, TextInput } from "react-native";
+import { FlatList, TouchableOpacity, StyleSheet, useColorScheme, Text } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { WarningPopup } from '../warningPopup.tsx';
@@ -13,6 +13,10 @@ const medications = [
   { id: "5", name: "Naloxone" },
 ];
 
+function alphabeticalList() {
+  return medications.slice().sort((a, b) => a.name.localeCompare(b.name));
+}
+        
 let hasShownWarningThisSession = false;
 
 export default function HomeScreen() {
@@ -27,6 +31,7 @@ export default function HomeScreen() {
 
   const handlePress = (medName: string) => {
     console.log(`Clicked: ${medName}`);
+    // TODO: navigate to specific dosage calculator screen
     router.push(`/medication/${medName}`);
   };
 
@@ -50,6 +55,10 @@ export default function HomeScreen() {
       <ThemedText type="title" style={styles.title}>
         Medications
       </ThemedText>
+
+      <FlatList data={alphabeticalList()} renderItem={renderItem} keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.list} showsVerticalScrollIndicator={false} />
+      {showWarning && <WarningPopup onClose={handleCloseWarning} />}
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <TextInput placeholder="Search medications..." placeholderTextColor={scheme === "dark" ? "#a0aec0" : "#6c757d"}
