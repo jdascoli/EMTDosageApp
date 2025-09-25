@@ -13,9 +13,17 @@ const medications = [
   { id: "5", name: "Naloxone" },
 ];
 
+let hasShownWarningThisSession = false;
+
 export default function HomeScreen() {
   const scheme = useColorScheme();
   const [search, setSearch] = useState("");
+  const [showWarning, setShowWarning] = useState(!hasShownWarningThisSession);
+
+   const handleCloseWarning = () => {
+    setShowWarning(false);
+    hasShownWarningThisSession = true;
+  };
 
   const handlePress = (medName: string) => {
     console.log(`Clicked: ${medName}`);
@@ -59,7 +67,7 @@ export default function HomeScreen() {
       </View>
       <FlatList data={filteredMeds} renderItem={renderItem} keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}/>
-      <WarningPopup/>
+       {showWarning && <WarningPopup onClose={handleCloseWarning} />}
     </ThemedView>
   );
 }
