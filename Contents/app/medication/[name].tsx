@@ -24,3 +24,39 @@ export default function MedicationsDetailScreen() {
         </ThemedView>
     );
 }
+
+
+
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        padding: 16,
+    },
+    header: {
+        width: '100%',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    headerTitle: {
+        flex: 1,
+    },
+
+    backButtonText: {
+        fontSize: 16,
+        color: '#007AFF',
+        padding: 10,
+    },
+
+    content: {
+        flex: 1,
+        alignItems: 'center',
+        paddingTop: 50,
+    },
+
+    calculatorText: {
+      fontSize: 22,
+      fontWeight: 'bold',
+    },
+})
