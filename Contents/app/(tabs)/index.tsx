@@ -77,7 +77,7 @@ export default function HomeScreen() {
   )}
       {/* Med list */}
       </View>
-      <FlatList data={medications} renderItem={renderItem} keyExtractor={(item) => item.id}
+      <FlatList data={filteredMeds} renderItem={renderItem} keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}/>
        {showWarning && <WarningPopup onClose={handleCloseWarning} />}
 
