@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { FlatList, TouchableOpacity, StyleSheet, useColorScheme, Text, View, TextInput, Modal } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
-import { WarningPopup } from '../warningPopup.tsx';
+import { WarningPopup } from '@/components/warningPopup.tsx';
 import { Ionicons } from '@expo/vector-icons';
 import { SearchHistory } from "@/components/SearchHistory";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
