@@ -1,5 +1,4 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
@@ -11,7 +10,7 @@ export default function MedicationsDetailScreen() {
         <ThemedView>
             <Text></Text>
             <TouchableOpacity onPress={() => router.back()}>
-                <Text style={{fontSize: 16, color: '#007AFF', padding: 10}}>← Back</Text>
+                <Text style={styles.backButtonText}>← Back</Text>
             </TouchableOpacity>
 
             <ThemedText type="title">
