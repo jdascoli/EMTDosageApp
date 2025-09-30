@@ -1,4 +1,4 @@
-import { Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text, TouchableOpacity, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
@@ -7,6 +7,7 @@ export default function MedicationsDetailScreen() {
     const { name } = useLocalSearchParams();
 
     return (
+        <View>
         <ThemedView>
             <Text></Text>
             <TouchableOpacity onPress={() => router.back()}>
@@ -16,11 +17,11 @@ export default function MedicationsDetailScreen() {
             <ThemedText type="title">
                 {name}
             </ThemedText>
-
+        </ThemedView>
             <Text>
                 This is the dosage calculator screen for {name}.
             </Text>
-        </ThemedView>
+        </View>
     );
 }
 
