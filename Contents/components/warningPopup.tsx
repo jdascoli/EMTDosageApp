@@ -38,3 +38,5 @@ const styles = StyleSheet.create({
   text: { fontWeight: 'bold', fontSize: 18, color: '#333', textAlign: 'center', marginBottom: 25 },
   warningText: { fontSize: 24, color: '#b91c1c', fontWeight: 'bold', textAlign: 'center', marginBottom: 15 },
 });
+
+export default WarningPopup;

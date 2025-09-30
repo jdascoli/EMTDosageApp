@@ -82,11 +82,23 @@ export function useSearchHistory() {
     }
   };
 
+  const removeSearchTerm = async (id: number) => {
+    try {
+      const updated = recentSearches.filter((item) => item.id !== id);
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      setRecentSearches(updated);
+      console.log("Removed search term with id:", id);
+    } catch (error) {
+      console.error("Error removing search term:", error);
+    }
+  };
+
   return {
     recentSearches,
     isLoading,
     addSearchTerm,
     clearHistory,
+    removeSearchTerm,
     refresh: loadRecentSearches,
   };
 }

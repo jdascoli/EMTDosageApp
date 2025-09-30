@@ -3,8 +3,10 @@ import { router } from 'expo-router';
 import { FlatList, TouchableOpacity, StyleSheet, useColorScheme, Text, View, TextInput, Modal } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
-import { WarningPopup } from '../warningPopup.tsx';
+import { WarningPopup } from '@/components/warningPopup.tsx';
 import { Ionicons } from '@expo/vector-icons';
+import { SearchHistory } from "@/components/SearchHistory";
+import { useSearchHistory } from "@/hooks/useSearchHistory";
 
 const medications = [
   { id: "1", name: "Epinephrine" },
@@ -18,6 +20,7 @@ let hasShownWarningThisSession = false;
 
 export default function HomeScreen() {
   const scheme = useColorScheme();
+  const {addSearchTerm} = useSearchHistory();
   const [search, setSearch] = useState("");
   const [showWarning, setShowWarning] = useState(!hasShownWarningThisSession);
   const [filterVisible, setFilterVisible] = useState(false);
@@ -30,12 +33,17 @@ export default function HomeScreen() {
 
   const handlePress = (medName: string) => {
     console.log(`Clicked: ${medName}`);
+    addSearchTerm(medName);
     router.push(`/medication/${medName}`);
   };
 
   const handleCancelSearch = () => {
     setSearch("");
   }
+
+  const handleSearchChange = (text: string) => {
+    setSearch(text);
+  };
 
   let filteredMeds = medications.filter((med) => med.name.toLowerCase().includes(search.toLowerCase()));
   if (sortOption === "az") filteredMeds = filteredMeds.slice().sort((a, b) => a.name.localeCompare(b.name));
@@ -69,14 +77,19 @@ export default function HomeScreen() {
       <View style={styles.searchContainer}>
         <TextInput placeholder="Search medications..." placeholderTextColor={scheme === "dark" ? "#a0aec0" : "#6c757d"}
           style={[styles.searchInput, scheme === "dark" ? styles.searchInputDark : styles.searchInputLight ]}
-          value={search} onChangeText={setSearch} />
+          value={search} onChangeText={setSearch} returnKeyType="search" onSubmitEditing={() => {
+          if (search.trim().length > 0) { addSearchTerm(search) }}}/>
           {search.length > 0 && (
             <TouchableOpacity onPress={handleCancelSearch} style={styles.clearButton}>
               <Text style={styles.clearButtonText}>X</Text> 
-            </TouchableOpacity>
-  )}
-      {/* Med list */}
+            </TouchableOpacity>)}
       </View>
+
+      {/* Search History Component */}
+      <SearchHistory onSearchTermSelect={handleSearchChange} />
+
+      {/* Med list */}
+
       <FlatList data={filteredMeds} renderItem={renderItem} keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}/>
        {showWarning && <WarningPopup onClose={handleCloseWarning} />}
@@ -113,6 +126,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, paddingTop: 32 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
   title: { marginBottom: 0 },
+  subtitle: { marginBottom: 10, fontSize: 16 },
 
   searchContainer: { position: "relative", marginBottom: 16 },
   searchInput: { padding: 12, paddingRight: 40, borderRadius: 10, borderWidth: 1, fontSize: 16 },
