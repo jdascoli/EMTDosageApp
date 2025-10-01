@@ -1,15 +1,21 @@
-import { View, Text, Pressable, FlatList, ActivityIndicator } from "react-native";
+import React from "react";
+import {
+  View,
+  Text,
+  Pressable,
+  FlatList,
+  ActivityIndicator,
+} from "react-native";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
 import { ThemedText } from "@/components/ThemedText";
 import { useColorScheme } from "@/hooks/useColorScheme";
-import { Ionicons } from "@expo/vector-icons";
 
 interface SearchHistoryProps {
   onSearchTermSelect: (term: string) => void;
 }
 
 export function SearchHistory({ onSearchTermSelect }: SearchHistoryProps) {
-  const { recentSearches, isLoading, clearHistory, removeSearchTerm } = useSearchHistory();
+  const { recentSearches, isLoading, clearHistory } = useSearchHistory();
   const scheme = useColorScheme();
 
   // Don't show anything if there are no recent searches
@@ -58,19 +64,27 @@ export function SearchHistory({ onSearchTermSelect }: SearchHistoryProps) {
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item) => item.id.toString()}
           renderItem={({ item }) => (
-            <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 12,
-              paddingVertical: 6, borderRadius: 16, marginRight: 8, 
-              backgroundColor: scheme === "dark" ? "#21262d" : "#f6f8fa", borderWidth: 1,
-              borderColor: scheme === "dark" ? "#30363d" : "#d0d7de",}}>
-            <Pressable onPress={() => onSearchTermSelect(item.term)} style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, color: scheme === "dark" ? "#e6edf3" : "#1f2328" }}>
+            <Pressable
+              onPress={() => onSearchTermSelect(item.term)}
+              style={{
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 16,
+                marginRight: 8,
+                backgroundColor: scheme === "dark" ? "#21262d" : "#f6f8fa",
+                borderWidth: 1,
+                borderColor: scheme === "dark" ? "#30363d" : "#d0d7de",
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 14,
+                  color: scheme === "dark" ? "#e6edf3" : "#1f2328",
+                }}
+              >
                 {item.term}
               </Text>
             </Pressable>
-            <Pressable onPress={() => removeSearchTerm(item.id)} style={{ marginLeft: 6 }}>
-              <Ionicons name="close-circle" size={16} color={scheme === "dark" ? "#f7fafc" : "#2d3748"} />
-            </Pressable>
-            </View>
           )}
         />
       )}

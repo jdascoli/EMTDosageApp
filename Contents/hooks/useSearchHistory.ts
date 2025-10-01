@@ -84,7 +84,7 @@ export function useSearchHistory() {
 
   const removeSearchTerm = async (id: number) => {
     try {
-      const updated = recentSearches.filter(item => item.id !== id);
+      const updated = recentSearches.filter((item) => item.id !== id);
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
       setRecentSearches(updated);
       console.log("Removed search term with id:", id);
