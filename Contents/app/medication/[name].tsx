@@ -20,6 +20,47 @@ export default function MedicationsDetailScreen() {
     null
   );
 
+
+// Handle lb input - integers only
+  const handleLbsChange = (text: string) => {
+    
+    if (text === "" || /^\d+$/.test(text)){
+      setLbsWeight(text);
+
+      //Auto convvert to kg
+      if(text && text !== "0") {
+        const kgValue = (parseInt(text) / 2.20462).toFixed(1);
+        setKgWeight(kgValue);
+      } else if (text === ""){
+        setKgWeight("");
+      }
+      setResult(null);
+      }
+    };
+
+// Handle Kg input - one decimal place only
+  const handleKgChange = (text: string) => {
+    if(text === "" || /^\d+\.?\d{0,1}$/.test(text)) {
+      setKgWeight(text);
+
+      //Auto convert to lbs
+      if (text && text !== "0" && text !== "0.0") {
+        const lbValue = Math.round(parseFloat(text) * 2.20462);
+        setLbsWeight(lbValue.toString());
+      } else if (text === "") {
+        setLbsWeight("");
+      }
+
+      // Clear result when input changes
+      setResult(null);
+    }
+  };
+    
+  
+
+
+
+
   // Error message for zero weight
   const handleCalculation = () => {
     let weightValue: number;
@@ -67,14 +108,14 @@ export default function MedicationsDetailScreen() {
         style={styles.input}
         placeholder="145 lbs"
         value={lbsWeight}
-        onChangeText={setLbsWeight}
+        onChangeText={handleLbsChange} //setLbsWeight -> handleLbsChange
         keyboardType="numeric"
       />
       <TextInput
         style={styles.input}
         placeholder="65.77 kg"
         value={kgWeight}
-        onChangeText={setKgWeight}
+        onChangeText={handleKgChange} //setKgWeight -> handleKgChange
         keyboardType="numeric"
       />
 
