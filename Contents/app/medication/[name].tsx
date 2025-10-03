@@ -1,10 +1,11 @@
-import { Text, TouchableOpacity, StyleSheet, TextInput, Button, Alert, View } from "react-native";
+import { Text, TouchableOpacity, StyleSheet, TextInput, useColorScheme, Alert, View } from "react-native";
 import { useState } from "react";
 import { useLocalSearchParams, router } from "expo-router";
 import { ThemedView } from "@/components/ThemedView";
 import { ThemedText } from "@/components/ThemedText";
 
 export default function MedicationsDetailScreen() {
+  const scheme = useColorScheme();
   const { name } = useLocalSearchParams();
   const [lbsWeight, setLbsWeight] = useState("");
   const [kgWeight, setKgWeight] = useState("");
@@ -120,24 +121,46 @@ const medicationInfo: Record<string, string> = {
         Please fill in one of the weight inputs.
       </Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="145 lbs"
-        value={lbsWeight}
-        onChangeText={handleLbsChange} //setLbsWeight -> handleLbsChange
-        keyboardType="numeric"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="65.8 kg"
-        value={kgWeight}
-        onChangeText={handleKgChange} //setKgWeight -> handleKgChange
-        keyboardType="numeric"
-      />
-
-      <View style={styles.buttonContainer}>
-        <Button title="Calculate Dosage" onPress={handleCalculation} />
+      <View style={styles.inputRow}>
+        <TextInput
+          style={[styles.input1,{ 
+              backgroundColor: scheme === "dark" ? "#1e293b" : "#fff", 
+              color: scheme === "dark" ? "#f8fafc" : "#111",
+              borderColor: scheme === "dark" ? "#475569" : "gray" 
+            }
+          ]}
+          placeholder="145"
+          placeholderTextColor={scheme === "dark" ? "#94a3b8" : "#999"}
+          value={lbsWeight}
+          onChangeText={handleLbsChange}
+          keyboardType="numeric"
+        />
+        <Text style={[styles.unit, { color: scheme === "dark" ? "#f8fafc" : "#111" }]}>lbs</Text>
       </View>
+
+      <View style={styles.inputRow}>
+        <TextInput
+          style={[
+            styles.input1,{ 
+              backgroundColor: scheme === "dark" ? "#1e293b" : "#fff", 
+              color: scheme === "dark" ? "#f8fafc" : "#111",
+              borderColor: scheme === "dark" ? "#475569" : "gray" 
+            }
+          ]}
+          placeholder="65.8"
+          placeholderTextColor={scheme === "dark" ? "#94a3b8" : "#999"}
+          value={kgWeight}
+          onChangeText={handleKgChange}
+          keyboardType="numeric"
+        />
+        <Text style={[styles.unit, { color: scheme === "dark" ? "#f8fafc" : "#111" }]}>kg</Text>
+      </View>
+
+      <TouchableOpacity
+        style={[styles.actionButton, { backgroundColor: scheme === "dark" ? "#3b82f6" : "#007AFF" }]}
+        onPress={handleCalculation}>
+        <Text style={styles.actionButtonText}>Calculate Dosage</Text>
+      </TouchableOpacity>
 
       {/*Dose result appears under the button after pressing it */}
       {result && (
@@ -145,8 +168,13 @@ const medicationInfo: Record<string, string> = {
           <ThemedText type="subtitle" style={styles.resultTitle}>
             Calculated Dose:
           </ThemedText>
-          <View style={styles.resultBox}>
-            <Text style={styles.resultDose}>
+          <View
+            style={[
+              styles.resultBox,{
+                backgroundColor: scheme === "dark" ? "#1e293b" : "#e6fffa",
+                borderColor: scheme === "dark" ? "#38bdf8" : "#38b2ac"
+              }]}>
+            <Text style={[ styles.resultDose,{ color: scheme === "dark" ? "#f8fafc" : "#234e52" }]}>
               {result.dose} {result.unit}
             </Text>
           </View>
@@ -160,13 +188,11 @@ const medicationInfo: Record<string, string> = {
 
       {/* Reset Button */}
       {result && (
-        <View style={styles.buttonContainer}>
-          <Button
-            title="Calculate Again"
-            onPress={resetCalculator}
-            color="#e53e3e"
-          />
-        </View>
+        <TouchableOpacity
+          style={[styles.actionButton,{ backgroundColor: "#e53e3e" }]}
+          onPress={resetCalculator}>
+          <Text style={styles.actionButtonText}>Calculate Again</Text>
+        </TouchableOpacity>
       )}
     </ThemedView>
   );
@@ -250,4 +276,35 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontStyle: "italic",
   },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 15,
+  },
+  input1: {
+    height: 40,
+    width: 120,
+    borderColor: "gray",
+    borderWidth: 1,
+    paddingHorizontal: 10,
+  },
+  unit: {
+    marginLeft: 8,
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  actionButton: {
+    width: 200,           
+    alignSelf: "center",    
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginVertical: 8,
+  },
+  actionButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+    textAlign: "center",
+  }
 });
