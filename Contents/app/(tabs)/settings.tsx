@@ -1,6 +1,5 @@
-import { Image } from 'expo-image';
 import { useState } from 'react'; // added for useState
-import { StyleSheet, View, Text, Switch} from 'react-native';
+import { StyleSheet, View, Text, Switch, Image } from 'react-native';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';

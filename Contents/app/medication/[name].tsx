@@ -1,24 +1,33 @@
-import {
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  TextInput,
-  Button,
-  Alert,
-  View,
-} from "react-native";
+import { Text, TouchableOpacity, StyleSheet, TextInput, useColorScheme, Alert, View } from "react-native";
 import { useState } from "react";
 import { useLocalSearchParams, router } from "expo-router";
 import { ThemedView } from "@/components/ThemedView";
 import { ThemedText } from "@/components/ThemedText";
 
 export default function MedicationsDetailScreen() {
+  const scheme = useColorScheme();
   const { name } = useLocalSearchParams();
   const [lbsWeight, setLbsWeight] = useState("");
   const [kgWeight, setKgWeight] = useState("");
   const [result, setResult] = useState<{ dose: number; unit: string } | null>(
     null
   );
+
+const dosageGuidelines: Record<string, { perKg: number; unit: string }> = {
+  Epinephrine: { perKg: 0.01, unit: "mg" },
+  Aspirin: { perKg: 5, unit: "mg" },
+  Nitroglycerin: { perKg: 0.3, unit: "mg" },
+  Albuterol: { perKg: 0.15, unit: "mg" },
+  Naloxone: { perKg: 0.1, unit: "mg" },
+};
+
+const medicationInfo: Record<string, string> = {
+  Epinephrine: "Increases heart rate, blood pressure, and dilates airways (used in anaphylaxis).",
+  Aspirin: "Reduces pain, fever, and inflammation; inhibits platelet aggregation.",
+  Nitroglycerin: "Relaxes blood vessels, improving blood flow (used in angina).",
+  Albuterol: "Relaxes airway muscles to improve breathing (used in asthma/COPD).",
+  Naloxone: "Blocks opioid receptors to reverse overdoses.",
+};
 
 
 // Handle lb input - integers only
@@ -56,11 +65,6 @@ export default function MedicationsDetailScreen() {
     }
   };
     
-  
-
-
-
-
   // Error message for zero weight
   const handleCalculation = () => {
     let weightValue: number;
@@ -83,7 +87,16 @@ export default function MedicationsDetailScreen() {
       return;
     }
 
-    // Josh! INSERT MEDICATION DOSAGE CALCULATION HERE
+    const medInfo = dosageGuidelines[name as string];
+
+    if (!medInfo) {
+      Alert.alert("Error", "Dosage information not available for this medication");
+      return;
+    }
+
+    const dose = +(weightValue * medInfo.perKg).toFixed(2); // round to 2 decimals
+    setResult({ dose, unit: medInfo.unit });
+
   };
 
   const resetCalculator = () => {
@@ -100,28 +113,54 @@ export default function MedicationsDetailScreen() {
 
       <ThemedText type="title">{name}</ThemedText>
 
+      <Text style={{ fontStyle: "italic", marginVertical: 8 }}>
+        {medicationInfo[name as string] ?? "No mechanism info available."}
+      </Text>
+
       <Text style={styles.instructionText}>
         Please fill in one of the weight inputs.
       </Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="145 lbs"
-        value={lbsWeight}
-        onChangeText={handleLbsChange} //setLbsWeight -> handleLbsChange
-        keyboardType="numeric"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="65.77 kg"
-        value={kgWeight}
-        onChangeText={handleKgChange} //setKgWeight -> handleKgChange
-        keyboardType="numeric"
-      />
-
-      <View style={styles.buttonContainer}>
-        <Button title="Calculate Dosage" onPress={handleCalculation} />
+      <View style={styles.inputRow}>
+        <TextInput
+          style={[styles.input1,{ 
+              backgroundColor: scheme === "dark" ? "#1e293b" : "#fff", 
+              color: scheme === "dark" ? "#f8fafc" : "#111",
+              borderColor: scheme === "dark" ? "#475569" : "gray" 
+            }
+          ]}
+          placeholder="145"
+          placeholderTextColor={scheme === "dark" ? "#94a3b8" : "#999"}
+          value={lbsWeight}
+          onChangeText={handleLbsChange}
+          keyboardType="numeric"
+        />
+        <Text style={[styles.unit, { color: scheme === "dark" ? "#f8fafc" : "#111" }]}>lbs</Text>
       </View>
+
+      <View style={styles.inputRow}>
+        <TextInput
+          style={[
+            styles.input1,{ 
+              backgroundColor: scheme === "dark" ? "#1e293b" : "#fff", 
+              color: scheme === "dark" ? "#f8fafc" : "#111",
+              borderColor: scheme === "dark" ? "#475569" : "gray" 
+            }
+          ]}
+          placeholder="65.8"
+          placeholderTextColor={scheme === "dark" ? "#94a3b8" : "#999"}
+          value={kgWeight}
+          onChangeText={handleKgChange}
+          keyboardType="numeric"
+        />
+        <Text style={[styles.unit, { color: scheme === "dark" ? "#f8fafc" : "#111" }]}>kg</Text>
+      </View>
+
+      <TouchableOpacity
+        style={[styles.actionButton, { backgroundColor: scheme === "dark" ? "#3b82f6" : "#007AFF" }]}
+        onPress={handleCalculation}>
+        <Text style={styles.actionButtonText}>Calculate Dosage</Text>
+      </TouchableOpacity>
 
       {/*Dose result appears under the button after pressing it */}
       {result && (
@@ -129,8 +168,13 @@ export default function MedicationsDetailScreen() {
           <ThemedText type="subtitle" style={styles.resultTitle}>
             Calculated Dose:
           </ThemedText>
-          <View style={styles.resultBox}>
-            <Text style={styles.resultDose}>
+          <View
+            style={[
+              styles.resultBox,{
+                backgroundColor: scheme === "dark" ? "#1e293b" : "#e6fffa",
+                borderColor: scheme === "dark" ? "#38bdf8" : "#38b2ac"
+              }]}>
+            <Text style={[ styles.resultDose,{ color: scheme === "dark" ? "#f8fafc" : "#234e52" }]}>
               {result.dose} {result.unit}
             </Text>
           </View>
@@ -144,13 +188,11 @@ export default function MedicationsDetailScreen() {
 
       {/* Reset Button */}
       {result && (
-        <View style={styles.buttonContainer}>
-          <Button
-            title="Calculate Again"
-            onPress={resetCalculator}
-            color="#e53e3e"
-          />
-        </View>
+        <TouchableOpacity
+          style={[styles.actionButton,{ backgroundColor: "#e53e3e" }]}
+          onPress={resetCalculator}>
+          <Text style={styles.actionButtonText}>Calculate Again</Text>
+        </TouchableOpacity>
       )}
     </ThemedView>
   );
@@ -234,4 +276,35 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontStyle: "italic",
   },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 15,
+  },
+  input1: {
+    height: 40,
+    width: 120,
+    borderColor: "gray",
+    borderWidth: 1,
+    paddingHorizontal: 10,
+  },
+  unit: {
+    marginLeft: 8,
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  actionButton: {
+    width: 200,           
+    alignSelf: "center",    
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginVertical: 8,
+  },
+  actionButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+    textAlign: "center",
+  }
 });
