@@ -1,12 +1,4 @@
-import {
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  TextInput,
-  Button,
-  Alert,
-  View,
-} from "react-native";
+import { Text, TouchableOpacity, StyleSheet, TextInput, Button, Alert, View } from "react-native";
 import { useState } from "react";
 import { useLocalSearchParams, router } from "expo-router";
 import { ThemedView } from "@/components/ThemedView";
@@ -19,6 +11,22 @@ export default function MedicationsDetailScreen() {
   const [result, setResult] = useState<{ dose: number; unit: string } | null>(
     null
   );
+
+const dosageGuidelines: Record<string, { perKg: number; unit: string }> = {
+  Epinephrine: { perKg: 0.01, unit: "mg" },
+  Aspirin: { perKg: 5, unit: "mg" },
+  Nitroglycerin: { perKg: 0.3, unit: "mg" },
+  Albuterol: { perKg: 0.15, unit: "mg" },
+  Naloxone: { perKg: 0.1, unit: "mg" },
+};
+
+const medicationInfo: Record<string, string> = {
+  Epinephrine: "Increases heart rate, blood pressure, and dilates airways (used in anaphylaxis).",
+  Aspirin: "Reduces pain, fever, and inflammation; inhibits platelet aggregation.",
+  Nitroglycerin: "Relaxes blood vessels, improving blood flow (used in angina).",
+  Albuterol: "Relaxes airway muscles to improve breathing (used in asthma/COPD).",
+  Naloxone: "Blocks opioid receptors to reverse overdoses.",
+};
 
 
 // Handle lb input - integers only
@@ -56,11 +64,6 @@ export default function MedicationsDetailScreen() {
     }
   };
     
-  
-
-
-
-
   // Error message for zero weight
   const handleCalculation = () => {
     let weightValue: number;
@@ -83,7 +86,16 @@ export default function MedicationsDetailScreen() {
       return;
     }
 
-    // Josh! INSERT MEDICATION DOSAGE CALCULATION HERE
+    const medInfo = dosageGuidelines[name as string];
+
+    if (!medInfo) {
+      Alert.alert("Error", "Dosage information not available for this medication");
+      return;
+    }
+
+    const dose = +(weightValue * medInfo.perKg).toFixed(2); // round to 2 decimals
+    setResult({ dose, unit: medInfo.unit });
+
   };
 
   const resetCalculator = () => {
@@ -100,6 +112,10 @@ export default function MedicationsDetailScreen() {
 
       <ThemedText type="title">{name}</ThemedText>
 
+      <Text style={{ fontStyle: "italic", marginVertical: 8 }}>
+        {medicationInfo[name as string] ?? "No mechanism info available."}
+      </Text>
+
       <Text style={styles.instructionText}>
         Please fill in one of the weight inputs.
       </Text>
@@ -113,7 +129,7 @@ export default function MedicationsDetailScreen() {
       />
       <TextInput
         style={styles.input}
-        placeholder="65.77 kg"
+        placeholder="65.8 kg"
         value={kgWeight}
         onChangeText={handleKgChange} //setKgWeight -> handleKgChange
         keyboardType="numeric"
