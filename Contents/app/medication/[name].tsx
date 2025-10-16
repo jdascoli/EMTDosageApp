@@ -12,10 +12,10 @@ export default function MedicationsDetailScreen() {
   const [result, setResult] = useState<{ dose: number; unit: string } | null>(null);
   const [age, setAge] = useState("");
 
-const dosageGuidelines: Record<string, { perKg: number; unit: string, maxDose: number }> = {
+const dosageGuidelines: Record<string, { perKg?: number; unit: string, maxDose?: number, fixedDose?: number}> = {
   Epinephrine: { perKg: 0.01, unit: "mg", maxDose: 0.3 },
   Aspirin: { perKg: 5, unit: "mg", maxDose: 325 },
-  Nitroglycerin: { perKg: 0.3, unit: "mg", maxDose: 0.4 },
+  Nitroglycerin: { unit: "mg", fixedDose: 0.4 },
   Albuterol: { perKg: 0.15, unit: "mg", maxDose: 5 },
   Naloxone: { perKg: 0.1, unit: "mg", maxDose: 2 },
 };
@@ -70,6 +70,8 @@ const handleAgeChange = (text: string) => {
       setResult(null);
     }
   };
+  const medInfo = dosageGuidelines[name as string];
+  const isFixedDose = medInfo && !!medInfo.fixedDose;
     
   // Error message for zero weight
   const handleCalculation = () => {
@@ -93,16 +95,19 @@ const handleAgeChange = (text: string) => {
       return;
     }
 
-    const medInfo = dosageGuidelines[name as string];
+    if (isFixedDose && medInfo.fixedDose) {
+      setResult({ dose: medInfo.fixedDose, unit: medInfo.unit });
+      return;
+    }
 
     if (!medInfo) {
       Alert.alert("Error", "Dosage information not available for this medication");
       return;
     }
 
-    let dose = +(weightValue * medInfo.perKg).toFixed(2); // round to 2 decimals
-    if (dose > medInfo.maxDose) {
-      dose = medInfo.maxDose;
+    let dose = +(weightValue * (medInfo.perKg ?? 0)).toFixed(2);
+    if (dose > (medInfo.maxDose ?? 0)) {
+      dose = medInfo.maxDose ?? 0;
       Alert.alert("Note", `Calculated dose exceeds max safe dose. Capped at ${dose} ${medInfo.unit}.`);
     }
 
@@ -117,6 +122,9 @@ const handleAgeChange = (text: string) => {
     setAge("");
   };
 
+  if (isFixedDose && !result && medInfo?.fixedDose) {
+    setResult({ dose: medInfo.fixedDose, unit: medInfo.unit });
+  }
   return (
     <ThemedView style={styles.container}>
       <TouchableOpacity onPress={() => router.back()}>
@@ -187,17 +195,29 @@ const handleAgeChange = (text: string) => {
         <Text style={[styles.unit, { color: scheme === "dark" ? "#f8fafc" : "#111" }]}>kg</Text>
       </View>
 
+      {!isFixedDose && (
       <TouchableOpacity
         style={[styles.actionButton, { backgroundColor: scheme === "dark" ? "#3b82f6" : "#007AFF" }]}
         onPress={handleCalculation}>
         <Text style={styles.actionButtonText}>Calculate Dosage</Text>
       </TouchableOpacity>
+    )}
+
+    {isFixedDose && (
+      <TouchableOpacity
+        style={[styles.actionButton, { backgroundColor: scheme === "dark" ? "#475569" : "#cbd5e1" }]}
+        disabled>
+        <Text style={[ styles.actionButtonText, { color: "#94a3b8" }]}>
+          Calculate Dosage
+        </Text>
+      </TouchableOpacity>
+    )}
 
       {/*Dose result appears under the button after pressing it */}
       {result && (
         <View style={styles.resultContainer}>
           <ThemedText type="subtitle" style={styles.resultTitle}>
-            Calculated Dose:
+            {isFixedDose ? "Standard Dose:" : "Calculated Dose:"}
           </ThemedText>
           <View
             style={[
@@ -209,16 +229,23 @@ const handleAgeChange = (text: string) => {
               {result.dose} {result.unit}
             </Text>
           </View>
-          <ThemedText style={styles.resultNote}>
-            {kgWeight
-              ? `For a patient weighing ${kgWeight} kg`
-              : `For a patient weighing ${lbsWeight} lbs`}
-          </ThemedText>
+          {isFixedDose && (
+            <ThemedText style={styles.resultNote}>
+              This medication has a fixed standard dose.
+            </ThemedText>
+          )}
+          {!isFixedDose && (
+            <ThemedText style={styles.resultNote}>
+              {kgWeight
+                ? `For a patient weighing ${kgWeight} kg`
+                : `For a patient weighing ${lbsWeight} lbs`}
+            </ThemedText>
+          )}
         </View>
       )}
 
       {/* Reset Button */}
-      {result && (
+      {!isFixedDose && result && (
         <TouchableOpacity
           style={[styles.actionButton,{ backgroundColor: "#e53e3e" }]}
           onPress={resetCalculator}>
