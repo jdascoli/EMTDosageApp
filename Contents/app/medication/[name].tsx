@@ -9,16 +9,15 @@ export default function MedicationsDetailScreen() {
   const { name } = useLocalSearchParams();
   const [lbsWeight, setLbsWeight] = useState("");
   const [kgWeight, setKgWeight] = useState("");
-  const [result, setResult] = useState<{ dose: number; unit: string } | null>(
-    null
-  );
+  const [result, setResult] = useState<{ dose: number; unit: string } | null>(null);
+  const [age, setAge] = useState("");
 
-const dosageGuidelines: Record<string, { perKg: number; unit: string }> = {
-  Epinephrine: { perKg: 0.01, unit: "mg" },
-  Aspirin: { perKg: 5, unit: "mg" },
-  Nitroglycerin: { perKg: 0.3, unit: "mg" },
-  Albuterol: { perKg: 0.15, unit: "mg" },
-  Naloxone: { perKg: 0.1, unit: "mg" },
+const dosageGuidelines: Record<string, { perKg?: number; unit: string, maxDose?: number, fixedDose?: number}> = {
+  Epinephrine: { perKg: 0.01, unit: "mg", maxDose: 0.3 },
+  Aspirin: { perKg: 5, unit: "mg", maxDose: 325 },
+  Nitroglycerin: { unit: "mg", fixedDose: 0.4 },
+  Albuterol: { perKg: 0.15, unit: "mg", maxDose: 5 },
+  Naloxone: { perKg: 0.1, unit: "mg", maxDose: 2 },
 };
 
 const medicationInfo: Record<string, string> = {
@@ -29,6 +28,13 @@ const medicationInfo: Record<string, string> = {
   Naloxone: "Blocks opioid receptors to reverse overdoses.",
 };
 
+const handleAgeChange = (text: string) => {
+  if (text === "" || /^\d+$/.test(text)) {
+    const numeric = parseInt(text) || 0;
+    const displayValue = numeric > 99 ? "99+" : numeric.toString();
+    setAge(displayValue);
+  }
+};
 
 // Handle lb input - integers only
   const handleLbsChange = (text: string) => {
@@ -64,6 +70,8 @@ const medicationInfo: Record<string, string> = {
       setResult(null);
     }
   };
+  const medInfo = dosageGuidelines[name as string];
+  const isFixedDose = medInfo && !!medInfo.fixedDose;
     
   // Error message for zero weight
   const handleCalculation = () => {
@@ -87,14 +95,22 @@ const medicationInfo: Record<string, string> = {
       return;
     }
 
-    const medInfo = dosageGuidelines[name as string];
+    if (isFixedDose && medInfo.fixedDose) {
+      setResult({ dose: medInfo.fixedDose, unit: medInfo.unit });
+      return;
+    }
 
     if (!medInfo) {
       Alert.alert("Error", "Dosage information not available for this medication");
       return;
     }
 
-    const dose = +(weightValue * medInfo.perKg).toFixed(2); // round to 2 decimals
+    let dose = +(weightValue * (medInfo.perKg ?? 0)).toFixed(2);
+    if (dose > (medInfo.maxDose ?? 0)) {
+      dose = medInfo.maxDose ?? 0;
+      Alert.alert("Note", `Calculated dose exceeds max safe dose. Capped at ${dose} ${medInfo.unit}.`);
+    }
+
     setResult({ dose, unit: medInfo.unit });
 
   };
@@ -103,8 +119,12 @@ const medicationInfo: Record<string, string> = {
     setLbsWeight("");
     setKgWeight("");
     setResult(null);
+    setAge("");
   };
 
+  if (isFixedDose && !result && medInfo?.fixedDose) {
+    setResult({ dose: medInfo.fixedDose, unit: medInfo.unit });
+  }
   return (
     <ThemedView style={styles.container}>
       <TouchableOpacity onPress={() => router.back()}>
@@ -118,8 +138,27 @@ const medicationInfo: Record<string, string> = {
       </Text>
 
       <Text style={styles.instructionText}>
-        Please fill in one of the weight inputs.
+        Please fill in one of the weight inputs and age.
       </Text>
+
+      <View style={styles.inputRow}>
+        <TextInput
+          style={[
+            styles.input1,
+            {
+              backgroundColor: scheme === "dark" ? "#1e293b" : "#fff",
+              color: scheme === "dark" ? "#f8fafc" : "#111",
+              borderColor: scheme === "dark" ? "#475569" : "gray",
+            },
+          ]}
+          placeholder="35"
+          placeholderTextColor={scheme === "dark" ? "#94a3b8" : "#999"}
+          value={age}
+          onChangeText={handleAgeChange}
+          keyboardType="numeric"
+        />
+        <Text style={[styles.unit, { color: scheme === "dark" ? "#f8fafc" : "#111" }]}>years</Text>
+      </View>
 
       <View style={styles.inputRow}>
         <TextInput
@@ -156,17 +195,29 @@ const medicationInfo: Record<string, string> = {
         <Text style={[styles.unit, { color: scheme === "dark" ? "#f8fafc" : "#111" }]}>kg</Text>
       </View>
 
+      {!isFixedDose && (
       <TouchableOpacity
         style={[styles.actionButton, { backgroundColor: scheme === "dark" ? "#3b82f6" : "#007AFF" }]}
         onPress={handleCalculation}>
         <Text style={styles.actionButtonText}>Calculate Dosage</Text>
       </TouchableOpacity>
+    )}
+
+    {isFixedDose && (
+      <TouchableOpacity
+        style={[styles.actionButton, { backgroundColor: scheme === "dark" ? "#475569" : "#cbd5e1" }]}
+        disabled>
+        <Text style={[ styles.actionButtonText, { color: "#94a3b8" }]}>
+          Calculate Dosage
+        </Text>
+      </TouchableOpacity>
+    )}
 
       {/*Dose result appears under the button after pressing it */}
       {result && (
         <View style={styles.resultContainer}>
           <ThemedText type="subtitle" style={styles.resultTitle}>
-            Calculated Dose:
+            {isFixedDose ? "Standard Dose:" : "Calculated Dose:"}
           </ThemedText>
           <View
             style={[
@@ -178,16 +229,23 @@ const medicationInfo: Record<string, string> = {
               {result.dose} {result.unit}
             </Text>
           </View>
-          <ThemedText style={styles.resultNote}>
-            {kgWeight
-              ? `For a patient weighing ${kgWeight} kg`
-              : `For a patient weighing ${lbsWeight} lbs`}
-          </ThemedText>
+          {isFixedDose && (
+            <ThemedText style={styles.resultNote}>
+              This medication has a fixed standard dose.
+            </ThemedText>
+          )}
+          {!isFixedDose && (
+            <ThemedText style={styles.resultNote}>
+              {kgWeight
+                ? `For a patient weighing ${kgWeight} kg`
+                : `For a patient weighing ${lbsWeight} lbs`}
+            </ThemedText>
+          )}
         </View>
       )}
 
       {/* Reset Button */}
-      {result && (
+      {!isFixedDose && result && (
         <TouchableOpacity
           style={[styles.actionButton,{ backgroundColor: "#e53e3e" }]}
           onPress={resetCalculator}>
@@ -288,11 +346,14 @@ const styles = StyleSheet.create({
     borderColor: "gray",
     borderWidth: 1,
     paddingHorizontal: 10,
+    textAlign: "right",
   },
   unit: {
+    width: 40,
     marginLeft: 8,
     fontSize: 16,
     fontWeight: "bold",
+    textAlign: "left",
   },
   actionButton: {
     width: 200,           
