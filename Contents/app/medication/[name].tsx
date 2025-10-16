@@ -1,5 +1,6 @@
 import { Text, TouchableOpacity, StyleSheet, TextInput, useColorScheme, Alert, View } from "react-native";
 import { useState } from "react";
+import RNPickerSelect from "react-native-picker-select";
 import { useLocalSearchParams, router } from "expo-router";
 import { ThemedView } from "@/components/ThemedView";
 import { ThemedText } from "@/components/ThemedText";
@@ -11,6 +12,7 @@ export default function MedicationsDetailScreen() {
   const [kgWeight, setKgWeight] = useState("");
   const [result, setResult] = useState<{ dose: number; unit: string } | null>(null);
   const [age, setAge] = useState("");
+  const [dropDownSelection, setDropDownSelection] = useState<string | null>(null);
 
 const dosageGuidelines: Record<string, { perKg?: number; unit: string, maxDose?: number, fixedDose?: number}> = {
   Epinephrine: { perKg: 0.01, unit: "mg", maxDose: 0.3 },
@@ -20,12 +22,39 @@ const dosageGuidelines: Record<string, { perKg?: number; unit: string, maxDose?:
   Naloxone: { perKg: 0.1, unit: "mg", maxDose: 2 },
 };
 
+const dropDownDosageOptions = [
+    { medId: "Epinephrine",   perKg: 0.01, unit: "mg", usage: "Standard" },
+    { medId: "Aspirin",       perKg: 5.00, unit: "mg", usage: "Standard" },
+    { medId: "Nitroglycerin", perKg: 0.30, unit: "mg", usage: "Standard" },
+    { medId: "Albuterol",     perKg: 0.15, unit: "mg", usage: "Standard" },
+    { medId: "Naloxone",      perKg: 0.10, unit: "mg", usage: "Standard" },
+    { medId: "Naloxone",      perKg: 0.12, unit: "mg", usage: "ExampleUsage" },
+];
+
+// List of only Med-specific Entries
+const filteredDropdown = dropDownDosageOptions.filter(
+  (item) => item.medId === name
+);
+
+const dropDownList = filteredDropdown.map((item, index) => ({
+  label: `${item.usage}`,
+  value: item.perKg,
+}));
+
 const medicationInfo: Record<string, string> = {
   Epinephrine: "Increases heart rate, blood pressure, and dilates airways (used in anaphylaxis).",
   Aspirin: "Reduces pain, fever, and inflammation; inhibits platelet aggregation.",
   Nitroglycerin: "Relaxes blood vessels, improving blood flow (used in angina).",
   Albuterol: "Relaxes airway muscles to improve breathing (used in asthma/COPD).",
   Naloxone: "Blocks opioid receptors to reverse overdoses.",
+};
+
+const medicationContraindications: Record<string, string> = {
+  Epinephrine: "Epinephrine can induce cardiac arrhythmias, chest pain, and myocardial ischemia, especially in patients with coronary artery disease, hypertension, or other organic heart diseases. It may also cause rapid increases in blood pressure that can lead to cerebral hemorrhage, particularly in older adults.",
+  Aspirin: "Patients can be allergic to Aspirin. Patients who have asthma should be cautious if they have asthma or known bronchospasm associated with NSAIDs. Aspirin increases the risk of GI bleeding in patients who already suffer from peptic ulcer disease or gastritis.",
+  Nitroglycerin: "Known history of increased intracranial pressure, severe anemia, right-sided myocardial infarction, or hypersensitivity to nitroglycerin are contraindications to nitroglycerin therapy. Concurrent use of nitroglycerin with PDE-5 inhibitors (e.g., sildenafil citrate, vardenafil hydroxide, tadalafil) is absolutely contraindicated. PDE-5 inhibitors have proven to accentuate the hypotensive effects of nitrates and precipitate syncopal episodes.",
+  Albuterol: "This should not be used for patients who have a history of hypersensitivity to the drug or any of its components, and its use should be cautiously considered in patients with certain pre-existing conditions due to potential adverse effects.",
+  Naloxone: "There are no absolute contraindications to using naloxone in an emergency. The only relative contraindication is known hypersensitivity to naloxone.",
 };
 
 const handleAgeChange = (text: string) => {
@@ -42,7 +71,7 @@ const handleAgeChange = (text: string) => {
     if (text === "" || /^\d+$/.test(text)){
       setLbsWeight(text);
 
-      //Auto convvert to kg
+      //Auto convert to kg
       if(text && text !== "0") {
         const kgValue = (parseInt(text) / 2.20462).toFixed(1);
         setKgWeight(kgValue);
@@ -105,7 +134,14 @@ const handleAgeChange = (text: string) => {
       return;
     }
 
-    let dose = +(weightValue * (medInfo.perKg ?? 0)).toFixed(2);
+    // Formula for dosage
+    var dose = 0.00;
+    if(dropDownSelection == null){
+        dose = +(weightValue * (medInfo.perKg ?? 0)).toFixed(2); // round to 2 decimals
+    }
+    else {
+        dose = +(weightValue * (dropDownSelection ?? 0)).toFixed(2); // round to 2 decimals
+    }
     if (dose > (medInfo.maxDose ?? 0)) {
       dose = medInfo.maxDose ?? 0;
       Alert.alert("Note", `Calculated dose exceeds max safe dose. Capped at ${dose} ${medInfo.unit}.`);
@@ -136,6 +172,22 @@ const handleAgeChange = (text: string) => {
       <Text style={{ fontStyle: "italic", marginVertical: 8 }}>
         {medicationInfo[name as string] ?? "No mechanism info available."}
       </Text>
+      <Text style={{ fontStyle: "italic", marginVertical: 8 }}>
+        {medicationContraindications[name as string] ?? "No mechanism info available."}
+      </Text>
+
+      <View style={styles.container}>
+        <Text>Select Usage:</Text>
+        <RNPickerSelect
+          onValueChange={(value) => setDropDownSelection(value)}
+          items={dropDownList}
+          value={dropDownSelection}
+          placeholder={{ label: "(No Case Selected)", value: dosageGuidelines.name }}
+        />
+        {dropDownSelection && (
+          <Text style={styles.selectedText}>Using: {dropDownSelection} mg/kg</Text>
+        )}
+      </View>
 
       <Text style={styles.instructionText}>
         Please fill in one of the weight inputs and age.
