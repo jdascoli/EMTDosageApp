@@ -12,13 +12,14 @@ export default function MedicationsDetailScreen() {
   const [result, setResult] = useState<{ dose: number; unit: string } | null>(
     null
   );
+  const [age, setAge] = useState("");
 
-const dosageGuidelines: Record<string, { perKg: number; unit: string }> = {
-  Epinephrine: { perKg: 0.01, unit: "mg" },
-  Aspirin: { perKg: 5, unit: "mg" },
-  Nitroglycerin: { perKg: 0.3, unit: "mg" },
-  Albuterol: { perKg: 0.15, unit: "mg" },
-  Naloxone: { perKg: 0.1, unit: "mg" },
+const dosageGuidelines: Record<string, { perKg: number; unit: string; minAge?: number; }> = {
+  Epinephrine: { perKg: 0.01, unit: "mg", minAge:0 },
+  Aspirin: { perKg: 5, unit: "mg", minAge:18 },
+  Nitroglycerin: { perKg: 0.3, unit: "mg", minAge:18 },
+  Albuterol: { perKg: 0.15, unit: "mg", minAge:0 },
+  Naloxone: { perKg: 0.1, unit: "mg", minAge:0 },
 };
 
 const medicationInfo: Record<string, string> = {
@@ -27,6 +28,16 @@ const medicationInfo: Record<string, string> = {
   Nitroglycerin: "Relaxes blood vessels, improving blood flow (used in angina).",
   Albuterol: "Relaxes airway muscles to improve breathing (used in asthma/COPD).",
   Naloxone: "Blocks opioid receptors to reverse overdoses.",
+};
+
+const handleAgeChange = (text: string) => {
+
+  if (text === "" || /^[1-9]\d*$/.test(text)) {
+    const numeric = parseInt(text) || 0;
+    const displayValue = numeric > 99 ? "99" : numeric.toString();
+    setAge(displayValue);
+    setResult(null);// initialize
+  }
 };
 
 
@@ -67,6 +78,15 @@ const medicationInfo: Record<string, string> = {
     
   // Error message for zero weight
   const handleCalculation = () => {
+    // Age verification
+    const ageValue = parseInt(age);
+    if (!age || isNaN(ageValue) || ageValue <= 0) {
+      Alert.alert("Error", "Please enter a valid age (positive integer)");
+      return;
+    }
+
+    // Adult-only
+
     let weightValue: number;
 
     if (kgWeight) {
@@ -89,6 +109,17 @@ const medicationInfo: Record<string, string> = {
 
     const medInfo = dosageGuidelines[name as string];
 
+    if (medInfo?.minAge && ageValue < medInfo.minAge) {
+      Alert.alert(
+        "Age Restriction",
+        `${name} is only suitable for patients aged ${medInfo.minAge} and above. This medication is not recommended for patients under ${medInfo.minAge} years old.`,
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
+    
+
     if (!medInfo) {
       Alert.alert("Error", "Dosage information not available for this medication");
       return;
@@ -103,6 +134,7 @@ const medicationInfo: Record<string, string> = {
     setLbsWeight("");
     setKgWeight("");
     setResult(null);
+    setAge("");
   };
 
   return (
@@ -118,8 +150,41 @@ const medicationInfo: Record<string, string> = {
       </Text>
 
       <Text style={styles.instructionText}>
-        Please fill in one of the weight inputs.
+        Please fill in one of the weight inputs and age.
       </Text>
+
+      {dosageGuidelines[name as string]?.minAge &&
+      dosageGuidelines[name as string].minAge! > 0 && (
+        <Text style={[styles.warningText, {
+          color: scheme === "dark" ? "#fbbf24" : "#d97706"
+        }]}>
+          ⚠️ This medication is only suitable for patients aged {dosageGuidelines[name as string].minAge}+
+        </Text>
+      )}
+      
+      {/* Age input*/}
+      <View style={styles.inputRow}>
+        <TextInput
+          style={[
+            styles.input1,
+            {
+              backgroundColor: scheme === "dark" ? "#1e293b" : "#fff",
+              color: scheme === "dark" ? "#f8fafc" : "#111",
+              borderColor: scheme === "dark" ? "#475569" : "gray",
+            },
+          ]}
+          placeholder="25"
+          placeholderTextColor={scheme === "dark" ? "#94a3b8" : "#999"}
+          value={age}
+          onChangeText={handleAgeChange}
+          keyboardType="numeric"
+        />
+        <Text style={[styles.unit, { color: scheme === "dark" ? "#f8fafc" : "#111" }]}>
+          years
+        </Text>
+      </View>
+
+      
 
       <View style={styles.inputRow}>
         <TextInput
@@ -306,5 +371,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     textAlign: "center",
-  }
+  },
+  warningText: {
+    fontSize: 14,
+    fontWeight: "600",
+    textAlign: "center",
+    marginVertical: 10,
+    paddingHorizontal: 12,
+  },
 });
