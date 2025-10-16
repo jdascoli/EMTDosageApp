@@ -9,16 +9,15 @@ export default function MedicationsDetailScreen() {
   const { name } = useLocalSearchParams();
   const [lbsWeight, setLbsWeight] = useState("");
   const [kgWeight, setKgWeight] = useState("");
-  const [result, setResult] = useState<{ dose: number; unit: string } | null>(
-    null
-  );
+  const [result, setResult] = useState<{ dose: number; unit: string } | null>(null);
+  const [age, setAge] = useState("");
 
-const dosageGuidelines: Record<string, { perKg: number; unit: string }> = {
-  Epinephrine: { perKg: 0.01, unit: "mg" },
-  Aspirin: { perKg: 5, unit: "mg" },
-  Nitroglycerin: { perKg: 0.3, unit: "mg" },
-  Albuterol: { perKg: 0.15, unit: "mg" },
-  Naloxone: { perKg: 0.1, unit: "mg" },
+const dosageGuidelines: Record<string, { perKg: number; unit: string, maxDose: number }> = {
+  Epinephrine: { perKg: 0.01, unit: "mg", maxDose: 0.3 },
+  Aspirin: { perKg: 5, unit: "mg", maxDose: 325 },
+  Nitroglycerin: { perKg: 0.3, unit: "mg", maxDose: 0.4 },
+  Albuterol: { perKg: 0.15, unit: "mg", maxDose: 5 },
+  Naloxone: { perKg: 0.1, unit: "mg", maxDose: 2 },
 };
 
 const medicationInfo: Record<string, string> = {
@@ -29,6 +28,13 @@ const medicationInfo: Record<string, string> = {
   Naloxone: "Blocks opioid receptors to reverse overdoses.",
 };
 
+const handleAgeChange = (text: string) => {
+  if (text === "" || /^\d+$/.test(text)) {
+    const numeric = parseInt(text) || 0;
+    const displayValue = numeric > 99 ? "99+" : numeric.toString();
+    setAge(displayValue);
+  }
+};
 
 // Handle lb input - integers only
   const handleLbsChange = (text: string) => {
@@ -94,7 +100,12 @@ const medicationInfo: Record<string, string> = {
       return;
     }
 
-    const dose = +(weightValue * medInfo.perKg).toFixed(2); // round to 2 decimals
+    let dose = +(weightValue * medInfo.perKg).toFixed(2); // round to 2 decimals
+    if (dose > medInfo.maxDose) {
+      dose = medInfo.maxDose;
+      Alert.alert("Note", `Calculated dose exceeds max safe dose. Capped at ${dose} ${medInfo.unit}.`);
+    }
+
     setResult({ dose, unit: medInfo.unit });
 
   };
@@ -103,6 +114,7 @@ const medicationInfo: Record<string, string> = {
     setLbsWeight("");
     setKgWeight("");
     setResult(null);
+    setAge("");
   };
 
   return (
@@ -118,8 +130,27 @@ const medicationInfo: Record<string, string> = {
       </Text>
 
       <Text style={styles.instructionText}>
-        Please fill in one of the weight inputs.
+        Please fill in one of the weight inputs and age.
       </Text>
+
+      <View style={styles.inputRow}>
+        <TextInput
+          style={[
+            styles.input1,
+            {
+              backgroundColor: scheme === "dark" ? "#1e293b" : "#fff",
+              color: scheme === "dark" ? "#f8fafc" : "#111",
+              borderColor: scheme === "dark" ? "#475569" : "gray",
+            },
+          ]}
+          placeholder="35"
+          placeholderTextColor={scheme === "dark" ? "#94a3b8" : "#999"}
+          value={age}
+          onChangeText={handleAgeChange}
+          keyboardType="numeric"
+        />
+        <Text style={[styles.unit, { color: scheme === "dark" ? "#f8fafc" : "#111" }]}>years</Text>
+      </View>
 
       <View style={styles.inputRow}>
         <TextInput
@@ -288,11 +319,14 @@ const styles = StyleSheet.create({
     borderColor: "gray",
     borderWidth: 1,
     paddingHorizontal: 10,
+    textAlign: "right",
   },
   unit: {
+    width: 40,
     marginLeft: 8,
     fontSize: 16,
     fontWeight: "bold",
+    textAlign: "left",
   },
   actionButton: {
     width: 200,           
