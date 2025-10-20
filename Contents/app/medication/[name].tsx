@@ -13,13 +13,14 @@ export default function MedicationsDetailScreen() {
   const [result, setResult] = useState<{ dose: number; unit: string } | null>(
     null
   );
+  const [age, setAge] = useState("");
 
-const dosageGuidelines: Record<string, { perKg?: number; unit: string, maxDose?: number, fixedDose?: number}> = {
-  Epinephrine: { perKg: 0.01, unit: "mg", maxDose: 0.3 },
-  Aspirin: { perKg: 5, unit: "mg", maxDose: 325 },
-  Nitroglycerin: { unit: "mg", fixedDose: 0.4 },
-  Albuterol: { perKg: 0.15, unit: "mg", maxDose: 5 },
-  Naloxone: { perKg: 0.1, unit: "mg", maxDose: 2 },
+const dosageGuidelines: Record<string, { perKg?: number; unit: string; maxDose?: number; fixedDose?: number; minAge?: number;}> = {
+  Epinephrine: { perKg: 0.01, unit: "mg", maxDose: 0.3, minAge:0 },
+  Aspirin: { perKg: 5, unit: "mg", maxDose: 325, , minAge:18 },
+  Nitroglycerin: { unit: "mg", fixedDose: 0.4, minAge:18 },
+  Albuterol: { perKg: 0.15, unit: "mg", maxDose: 5, minAge:0 },
+  Naloxone: { perKg: 0.1, unit: "mg", maxDose: 2, minAge:0 },
 };
 
 const medicationInfo: Record<string, string> = {
@@ -30,13 +31,16 @@ const medicationInfo: Record<string, string> = {
   Naloxone: "Blocks opioid receptors to reverse overdoses.",
 };
 
-  // Handle age input - non-negative integers only
-  const handleAgeChange = (text: string) => {
-    if (text === "" || /^\d+$/.test(text)) {
-      setAge(text);
-      setResult(null);
-    }
-  };
+const handleAgeChange = (text: string) => {
+
+  if (text === "" || /^[1-9]\d*$/.test(text)) {
+    const numeric = parseInt(text) || 0;
+    const displayValue = numeric > 99 ? "99" : numeric.toString();
+    setAge(displayValue);
+    setResult(null);// initialize
+  }
+};
+
 
 // Handle lb input - integers only
   const handleLbsChange = (text: string) => {
@@ -77,6 +81,15 @@ const medicationInfo: Record<string, string> = {
     
   // Error message for zero weight
   const handleCalculation = () => {
+    // Age verification
+    const ageValue = parseInt(age);
+    if (!age || isNaN(ageValue) || ageValue <= 0) {
+      Alert.alert("Error", "Please enter a valid age (positive integer)");
+      return;
+    }
+
+    // Adult-only
+
     let weightValue: number;
 
     if (kgWeight) {
@@ -101,6 +114,17 @@ const medicationInfo: Record<string, string> = {
       setResult({ dose: medInfo.fixedDose, unit: medInfo.unit });
       return;
     }
+
+    if (medInfo?.minAge && ageValue < medInfo.minAge) {
+      Alert.alert(
+        "Age Restriction",
+        `${name} is only suitable for patients aged ${medInfo.minAge} and above. This medication is not recommended for patients under ${medInfo.minAge} years old.`,
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
+    
 
     if (!medInfo) {
       Alert.alert("Error", "Dosage information not available for this medication");
@@ -147,8 +171,18 @@ const medicationInfo: Record<string, string> = {
       </Text>
 
       <Text style={styles.instructionText}>
+
         Please enter your age and one of the weight inputs.
       </Text>
+        
+        {dosageGuidelines[name as string]?.minAge &&
+      dosageGuidelines[name as string].minAge! > 0 && (
+        <Text style={[styles.warningText, {
+          color: scheme === "dark" ? "#fbbf24" : "#d97706"
+        }]}>
+          ⚠️ This medication is only suitable for patients aged {dosageGuidelines[name as string].minAge}+
+        </Text>
+      )}
 
         {/* Age Input Field */}
         <View style={styles.inputRow}>
@@ -411,6 +445,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     textAlign: "center",
+  },
+  warningText: {
+    fontSize: 14,
+    fontWeight: "600",
+    textAlign: "center",
+    marginVertical: 10,
+    paddingHorizontal: 12,
   },
   bottomSpacer: {
     height: 50,
