@@ -1,4 +1,4 @@
-import { Text, TouchableOpacity, StyleSheet, TextInput, useColorScheme, Alert, View } from "react-native";
+import { Text, TouchableOpacity, StyleSheet, TextInput, useColorScheme, Alert, View, ScrollView } from "react-native";
 import { useState } from "react";
 import { useLocalSearchParams, router } from "expo-router";
 import { ThemedView } from "@/components/ThemedView";
@@ -9,17 +9,18 @@ export default function MedicationsDetailScreen() {
   const { name } = useLocalSearchParams();
   const [lbsWeight, setLbsWeight] = useState("");
   const [kgWeight, setKgWeight] = useState("");
+  const [age, setAge] = useState("40");
   const [result, setResult] = useState<{ dose: number; unit: string } | null>(
     null
   );
   const [age, setAge] = useState("");
 
-const dosageGuidelines: Record<string, { perKg: number; unit: string; minAge?: number; }> = {
-  Epinephrine: { perKg: 0.01, unit: "mg", minAge:0 },
-  Aspirin: { perKg: 5, unit: "mg", minAge:18 },
-  Nitroglycerin: { perKg: 0.3, unit: "mg", minAge:18 },
-  Albuterol: { perKg: 0.15, unit: "mg", minAge:0 },
-  Naloxone: { perKg: 0.1, unit: "mg", minAge:0 },
+const dosageGuidelines: Record<string, { perKg?: number; unit: string; maxDose?: number; fixedDose?: number; minAge?: number;}> = {
+  Epinephrine: { perKg: 0.01, unit: "mg", maxDose: 0.3, minAge:0 },
+  Aspirin: { perKg: 5, unit: "mg", maxDose: 325, , minAge:18 },
+  Nitroglycerin: { unit: "mg", fixedDose: 0.4, minAge:18 },
+  Albuterol: { perKg: 0.15, unit: "mg", maxDose: 5, minAge:0 },
+  Naloxone: { perKg: 0.1, unit: "mg", maxDose: 2, minAge:0 },
 };
 
 const medicationInfo: Record<string, string> = {
@@ -75,6 +76,8 @@ const handleAgeChange = (text: string) => {
       setResult(null);
     }
   };
+  const medInfo = dosageGuidelines[name as string];
+  const isFixedDose = medInfo && !!medInfo.fixedDose;
     
   // Error message for zero weight
   const handleCalculation = () => {
@@ -107,7 +110,10 @@ const handleAgeChange = (text: string) => {
       return;
     }
 
-    const medInfo = dosageGuidelines[name as string];
+    if (isFixedDose && medInfo.fixedDose) {
+      setResult({ dose: medInfo.fixedDose, unit: medInfo.unit });
+      return;
+    }
 
     if (medInfo?.minAge && ageValue < medInfo.minAge) {
       Alert.alert(
@@ -125,7 +131,12 @@ const handleAgeChange = (text: string) => {
       return;
     }
 
-    const dose = +(weightValue * medInfo.perKg).toFixed(2); // round to 2 decimals
+    let dose = +(weightValue * (medInfo.perKg ?? 0)).toFixed(2);
+    if (dose > (medInfo.maxDose ?? 0)) {
+      dose = medInfo.maxDose ?? 0;
+      Alert.alert("Note", `Calculated dose exceeds max safe dose. Capped at ${dose} ${medInfo.unit}.`);
+    }
+
     setResult({ dose, unit: medInfo.unit });
 
   };
@@ -133,12 +144,22 @@ const handleAgeChange = (text: string) => {
   const resetCalculator = () => {
     setLbsWeight("");
     setKgWeight("");
+    setAge("40");
     setResult(null);
     setAge("");
   };
 
+  if (isFixedDose && !result && medInfo?.fixedDose) {
+    setResult({ dose: medInfo.fixedDose, unit: medInfo.unit });
+  }
   return (
     <ThemedView style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={true}
+        alwaysBounceVertical={false}
+        overScrollMode="always"
+      >
       <TouchableOpacity onPress={() => router.back()}>
         <Text style={styles.backButtonText}>← Back</Text>
       </TouchableOpacity>
@@ -150,10 +171,11 @@ const handleAgeChange = (text: string) => {
       </Text>
 
       <Text style={styles.instructionText}>
-        Please fill in one of the weight inputs and age.
-      </Text>
 
-      {dosageGuidelines[name as string]?.minAge &&
+        Please enter your age and one of the weight inputs.
+      </Text>
+        
+        {dosageGuidelines[name as string]?.minAge &&
       dosageGuidelines[name as string].minAge! > 0 && (
         <Text style={[styles.warningText, {
           color: scheme === "dark" ? "#fbbf24" : "#d97706"
@@ -161,8 +183,34 @@ const handleAgeChange = (text: string) => {
           ⚠️ This medication is only suitable for patients aged {dosageGuidelines[name as string].minAge}+
         </Text>
       )}
-      
-      {/* Age input*/}
+
+        {/* Age Input Field */}
+        <View style={styles.inputRow}>
+          <TextInput
+            style={[
+              styles.input1,
+              {
+                backgroundColor: scheme === "dark" ? "#1e293b" : "#fff",
+                color: scheme === "dark" ? "#f8fafc" : "#111",
+                borderColor: scheme === "dark" ? "#475569" : "gray",
+              },
+            ]}
+            placeholder="40"
+            placeholderTextColor={scheme === "dark" ? "#94a3b8" : "#999"}
+            value={age}
+            onChangeText={handleAgeChange}
+            keyboardType="numeric"
+          />
+          <Text
+            style={[
+              styles.unit,
+              { color: scheme === "dark" ? "#f8fafc" : "#111" },
+            ]}
+          >
+            years
+          </Text>
+        </View>
+
       <View style={styles.inputRow}>
         <TextInput
           style={[
@@ -173,18 +221,14 @@ const handleAgeChange = (text: string) => {
               borderColor: scheme === "dark" ? "#475569" : "gray",
             },
           ]}
-          placeholder="25"
+          placeholder="35"
           placeholderTextColor={scheme === "dark" ? "#94a3b8" : "#999"}
           value={age}
           onChangeText={handleAgeChange}
           keyboardType="numeric"
         />
-        <Text style={[styles.unit, { color: scheme === "dark" ? "#f8fafc" : "#111" }]}>
-          years
-        </Text>
+        <Text style={[styles.unit, { color: scheme === "dark" ? "#f8fafc" : "#111" }]}>years</Text>
       </View>
-
-      
 
       <View style={styles.inputRow}>
         <TextInput
@@ -221,17 +265,29 @@ const handleAgeChange = (text: string) => {
         <Text style={[styles.unit, { color: scheme === "dark" ? "#f8fafc" : "#111" }]}>kg</Text>
       </View>
 
+      {!isFixedDose && (
       <TouchableOpacity
         style={[styles.actionButton, { backgroundColor: scheme === "dark" ? "#3b82f6" : "#007AFF" }]}
         onPress={handleCalculation}>
         <Text style={styles.actionButtonText}>Calculate Dosage</Text>
       </TouchableOpacity>
+    )}
+
+    {isFixedDose && (
+      <TouchableOpacity
+        style={[styles.actionButton, { backgroundColor: scheme === "dark" ? "#475569" : "#cbd5e1" }]}
+        disabled>
+        <Text style={[ styles.actionButtonText, { color: "#94a3b8" }]}>
+          Calculate Dosage
+        </Text>
+      </TouchableOpacity>
+    )}
 
       {/*Dose result appears under the button after pressing it */}
       {result && (
         <View style={styles.resultContainer}>
           <ThemedText type="subtitle" style={styles.resultTitle}>
-            Calculated Dose:
+            {isFixedDose ? "Standard Dose:" : "Calculated Dose:"}
           </ThemedText>
           <View
             style={[
@@ -243,22 +299,31 @@ const handleAgeChange = (text: string) => {
               {result.dose} {result.unit}
             </Text>
           </View>
-          <ThemedText style={styles.resultNote}>
-            {kgWeight
-              ? `For a patient weighing ${kgWeight} kg`
-              : `For a patient weighing ${lbsWeight} lbs`}
-          </ThemedText>
+          {isFixedDose && (
+            <ThemedText style={styles.resultNote}>
+              This medication has a fixed standard dose.
+            </ThemedText>
+          )}
+          {!isFixedDose && (
+            <ThemedText style={styles.resultNote}>
+              {kgWeight
+                ? `For a patient weighing ${kgWeight} kg`
+                : `For a patient weighing ${lbsWeight} lbs`}
+            </ThemedText>
+          )}
         </View>
       )}
 
       {/* Reset Button */}
-      {result && (
+      {!isFixedDose && result && (
         <TouchableOpacity
-          style={[styles.actionButton,{ backgroundColor: "#e53e3e" }]}
+          style={[styles.actionButton,{ backgroundColor: "#e53e3e", marginBottom: 30 }]}
           onPress={resetCalculator}>
           <Text style={styles.actionButtonText}>Calculate Again</Text>
         </TouchableOpacity>
       )}
+       <View style={styles.bottomSpacer} />
+      </ScrollView>
     </ThemedView>
   );
 }
@@ -267,6 +332,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
+    minHeight: "100%",
+  },
+    scrollContent: {
+    flexGrow: 1,
+    padding: 16,
+    minHeight: "100%",
   },
   header: {
     width: "100%",
@@ -353,11 +424,14 @@ const styles = StyleSheet.create({
     borderColor: "gray",
     borderWidth: 1,
     paddingHorizontal: 10,
+    borderRadius: 6,
   },
   unit: {
+    width: 40,
     marginLeft: 8,
     fontSize: 16,
     fontWeight: "bold",
+    width: 60,
   },
   actionButton: {
     width: 200,           
@@ -379,4 +453,7 @@ const styles = StyleSheet.create({
     marginVertical: 10,
     paddingHorizontal: 12,
   },
+  bottomSpacer: {
+    height: 50,
+  }
 });
