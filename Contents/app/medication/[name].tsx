@@ -1,4 +1,4 @@
-import { Text, TouchableOpacity, StyleSheet, TextInput, useColorScheme, Alert, View } from "react-native";
+import { Text, TouchableOpacity, StyleSheet, TextInput, useColorScheme, Alert, View, ScrollView } from "react-native";
 import { useState } from "react";
 import { useLocalSearchParams, router } from "expo-router";
 import { ThemedView } from "@/components/ThemedView";
@@ -9,8 +9,10 @@ export default function MedicationsDetailScreen() {
   const { name } = useLocalSearchParams();
   const [lbsWeight, setLbsWeight] = useState("");
   const [kgWeight, setKgWeight] = useState("");
-  const [result, setResult] = useState<{ dose: number; unit: string } | null>(null);
-  const [age, setAge] = useState("");
+  const [age, setAge] = useState("40");
+  const [result, setResult] = useState<{ dose: number; unit: string } | null>(
+    null
+  );
 
 const dosageGuidelines: Record<string, { perKg?: number; unit: string, maxDose?: number, fixedDose?: number}> = {
   Epinephrine: { perKg: 0.01, unit: "mg", maxDose: 0.3 },
@@ -28,13 +30,13 @@ const medicationInfo: Record<string, string> = {
   Naloxone: "Blocks opioid receptors to reverse overdoses.",
 };
 
-const handleAgeChange = (text: string) => {
-  if (text === "" || /^\d+$/.test(text)) {
-    const numeric = parseInt(text) || 0;
-    const displayValue = numeric > 99 ? "99+" : numeric.toString();
-    setAge(displayValue);
-  }
-};
+  // Handle age input - non-negative integers only
+  const handleAgeChange = (text: string) => {
+    if (text === "" || /^\d+$/.test(text)) {
+      setAge(text);
+      setResult(null);
+    }
+  };
 
 // Handle lb input - integers only
   const handleLbsChange = (text: string) => {
@@ -118,6 +120,7 @@ const handleAgeChange = (text: string) => {
   const resetCalculator = () => {
     setLbsWeight("");
     setKgWeight("");
+    setAge("40");
     setResult(null);
     setAge("");
   };
@@ -127,6 +130,12 @@ const handleAgeChange = (text: string) => {
   }
   return (
     <ThemedView style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={true}
+        alwaysBounceVertical={false}
+        overScrollMode="always"
+      >
       <TouchableOpacity onPress={() => router.back()}>
         <Text style={styles.backButtonText}>← Back</Text>
       </TouchableOpacity>
@@ -138,8 +147,35 @@ const handleAgeChange = (text: string) => {
       </Text>
 
       <Text style={styles.instructionText}>
-        Please fill in one of the weight inputs and age.
+        Please enter your age and one of the weight inputs.
       </Text>
+
+        {/* Age Input Field */}
+        <View style={styles.inputRow}>
+          <TextInput
+            style={[
+              styles.input1,
+              {
+                backgroundColor: scheme === "dark" ? "#1e293b" : "#fff",
+                color: scheme === "dark" ? "#f8fafc" : "#111",
+                borderColor: scheme === "dark" ? "#475569" : "gray",
+              },
+            ]}
+            placeholder="40"
+            placeholderTextColor={scheme === "dark" ? "#94a3b8" : "#999"}
+            value={age}
+            onChangeText={handleAgeChange}
+            keyboardType="numeric"
+          />
+          <Text
+            style={[
+              styles.unit,
+              { color: scheme === "dark" ? "#f8fafc" : "#111" },
+            ]}
+          >
+            years
+          </Text>
+        </View>
 
       <View style={styles.inputRow}>
         <TextInput
@@ -247,11 +283,13 @@ const handleAgeChange = (text: string) => {
       {/* Reset Button */}
       {!isFixedDose && result && (
         <TouchableOpacity
-          style={[styles.actionButton,{ backgroundColor: "#e53e3e" }]}
+          style={[styles.actionButton,{ backgroundColor: "#e53e3e", marginBottom: 30 }]}
           onPress={resetCalculator}>
           <Text style={styles.actionButtonText}>Calculate Again</Text>
         </TouchableOpacity>
       )}
+       <View style={styles.bottomSpacer} />
+      </ScrollView>
     </ThemedView>
   );
 }
@@ -260,6 +298,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
+    minHeight: "100%",
+  },
+    scrollContent: {
+    flexGrow: 1,
+    padding: 16,
+    minHeight: "100%",
   },
   header: {
     width: "100%",
@@ -346,14 +390,14 @@ const styles = StyleSheet.create({
     borderColor: "gray",
     borderWidth: 1,
     paddingHorizontal: 10,
-    textAlign: "right",
+    borderRadius: 6,
   },
   unit: {
     width: 40,
     marginLeft: 8,
     fontSize: 16,
     fontWeight: "bold",
-    textAlign: "left",
+    width: 60,
   },
   actionButton: {
     width: 200,           
@@ -367,5 +411,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     textAlign: "center",
+  },
+  bottomSpacer: {
+    height: 50,
   }
 });
