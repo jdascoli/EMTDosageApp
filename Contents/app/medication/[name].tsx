@@ -11,10 +11,8 @@ export default function MedicationsDetailScreen() {
   const [lbsWeight, setLbsWeight] = useState("");
   const [kgWeight, setKgWeight] = useState("");
   const [age, setAge] = useState("");
-  const [result, setResult] = useState<{ dose: number; unit: string } | null>(
-    null
-  );
-  const [dropDownSelection, setDropDownSelection] = useState<string | null>(null);
+  const [result, setResult] = useState<{ dose: number; unit: string } | null>(null);
+  const [dropDownSelection, setDropDownSelection] = useState<number | null>(null);
 
 const dosageGuidelines: Record<string, { perKg?: number; unit: string; maxDose?: number; fixedDose?: number; minAge?: number;}> = {
   Epinephrine: { perKg: 0.01, unit: "mg", maxDose: 0.3, minAge:0 },
@@ -203,7 +201,7 @@ const handleAgeChange = (text: string) => {
         {medicationContraindications[name as string] ?? "No mechanism info available."}
       </Text>
 
-      <View style={styles.container}>
+      <View style={{ marginBottom: 10 }}>
         <Text>Select Usage:</Text>
         <RNPickerSelect
           onValueChange={(value) => setDropDownSelection(value)}
@@ -217,7 +215,7 @@ const handleAgeChange = (text: string) => {
         Please enter your age and one of the weight inputs.
       </Text>
         
-        {dosageGuidelines[name as string]?.minAge &&
+        {typeof dosageGuidelines[name as string]?.minAge === "number" &&
       dosageGuidelines[name as string].minAge! > 0 && (
         <Text style={[styles.warningText, {
           color: scheme === "dark" ? "#fbbf24" : "#d97706"
@@ -447,7 +445,6 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 16,
     fontWeight: "bold",
-    width: 60,
   },
   actionButton: {
     width: 200,           
