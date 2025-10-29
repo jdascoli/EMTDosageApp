@@ -1,9 +1,10 @@
 import { Text, TouchableOpacity, StyleSheet, TextInput, useColorScheme, Alert, View, ScrollView } from "react-native";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocalSearchParams, router } from "expo-router";
 import { ThemedView } from "@/components/ThemedView";
 import { ThemedText } from "@/components/ThemedText";
 import RNPickerSelect from "react-native-picker-select";
+import { getMedicationByName } from "@/database/medications";
 
 export default function MedicationsDetailScreen() {
   const scheme = useColorScheme();
@@ -40,21 +41,21 @@ const dropDownList = filteredDropdown.map((item, index) => ({
   value: item.perKg,
 }));
 
-const medicationInfo: Record<string, string> = {
-  Epinephrine: "Increases heart rate, blood pressure, and dilates airways (used in anaphylaxis).",
-  Aspirin: "Reduces pain, fever, and inflammation; inhibits platelet aggregation.",
-  Nitroglycerin: "Relaxes blood vessels, improving blood flow (used in angina).",
-  Albuterol: "Relaxes airway muscles to improve breathing (used in asthma/COPD).",
-  Naloxone: "Blocks opioid receptors to reverse overdoses.",
-};
+const [medication, setMedication] = useState<{
+  id?: string;
+  name?: string;
+  info?: string;
+  contraindications?: string;
+} | null>(null);
 
-const medicationContraindications: Record<string, string> = {
-  Epinephrine: "Epinephrine can induce cardiac arrhythmias, chest pain, and myocardial ischemia, especially in patients with coronary artery disease, hypertension, or other organic heart diseases. It may also cause rapid increases in blood pressure that can lead to cerebral hemorrhage, particularly in older adults.",
-  Aspirin: "Patients can be allergic to Aspirin. Patients who have asthma should be cautious if they have asthma or known bronchospasm associated with NSAIDs. Aspirin increases the risk of GI bleeding in patients who already suffer from peptic ulcer disease or gastritis.",
-  Nitroglycerin: "Known history of increased intracranial pressure, severe anemia, right-sided myocardial infarction, or hypersensitivity to nitroglycerin are contraindications to nitroglycerin therapy. Concurrent use of nitroglycerin with PDE-5 inhibitors (e.g., sildenafil citrate, vardenafil hydroxide, tadalafil) is absolutely contraindicated. PDE-5 inhibitors have proven to accentuate the hypotensive effects of nitrates and precipitate syncopal episodes.",
-  Albuterol: "This should not be used for patients who have a history of hypersensitivity to the drug or any of its components, and its use should be cautiously considered in patients with certain pre-existing conditions due to potential adverse effects.",
-  Naloxone: "There are no absolute contraindications to using naloxone in an emergency. The only relative contraindication is known hypersensitivity to naloxone.",
-};
+useEffect(() => {
+  const loadMedication = async () => {
+    const med = await getMedicationByName(name as string);
+    if (med) setMedication(med as {id: string, name: string; info: string; contraindications: string;});
+    else setMedication(null);
+  };
+  loadMedication();
+}, [name]);
 
 const handleAgeChange = (text: string) => {
 
@@ -195,10 +196,10 @@ const handleAgeChange = (text: string) => {
       <ThemedText type="title">{name}</ThemedText>
 
       <Text style={{ fontStyle: "italic", marginVertical: 8 }}>
-        {medicationInfo[name as string] ?? "No info available."}
+        {medication?.info ?? "No info available."}
       </Text>
       <Text style={{ fontStyle: "italic", marginVertical: 8 }}>
-        {medicationContraindications[name as string] ?? "No mechanism info available."}
+        {medication?.contraindications ?? "No mechanism info available."}
       </Text>
 
       <View style={{ marginBottom: 10 }}>

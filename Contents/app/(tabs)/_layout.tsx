@@ -6,9 +6,54 @@ import { IconSymbol } from "@/components/ui/IconSymbol";
 import TabBarBackground from "@/components/ui/TabBarBackground";
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
+import db, { initializeDB, upsertMedication } from "@/database/medications";
+import { useEffect } from 'react';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+
+useEffect(() => {
+    const setupDB = async () => {
+      await initializeDB();
+
+      await db.execAsync(`
+        DELETE FROM medications
+        WHERE rowid NOT IN (
+          SELECT MIN(rowid)
+          FROM medications
+          GROUP BY name
+        );
+      `);
+
+      await upsertMedication(
+        "Epinephrine",
+        "Increases heart rate, blood pressure, and dilates airways (used in anaphylaxis).",
+        "Epinephrine can induce cardiac arrhythmias, chest pain, and myocardial ischemia, especially in patients with coronary artery disease, hypertension, or other organic heart diseases. It may also cause rapid increases in blood pressure that can lead to cerebral hemorrhage."
+      );
+      await upsertMedication(
+        "Aspirin",
+        "Reduces pain, fever, and inflammation; inhibits platelet aggregation.",
+        "Patients can be allergic to Aspirin. Those with asthma or known bronchospasm associated with NSAIDs should be cautious. Increases risk of GI bleeding in patients with peptic ulcer disease or gastritis."
+      );
+      await upsertMedication(
+        "Nitroglycerin",
+        "Relaxes blood vessels, improving blood flow (used in angina).",
+        "Contraindicated in patients with severe anemia, right-sided myocardial infarction, or those using PDE-5 inhibitors (e.g., sildenafil, tadalafil). Combining the two can cause dangerous hypotension."
+      );
+      await upsertMedication(
+        "Albuterol",
+        "Relaxes airway muscles to improve breathing (used in asthma/COPD).",
+        "Avoid use in patients with known hypersensitivity to albuterol or its components; caution in patients with cardiac disorders due to possible tachycardia and hypertension."
+      );
+      await upsertMedication(
+        "Naloxone",
+        "Blocks opioid receptors to reverse overdoses.",
+        "There are no absolute contraindications to naloxone use in emergencies. The only relative contraindication is known hypersensitivity to naloxone."
+      );
+    };
+
+    setupDB();
+  }, []);
 
   return (
     <Tabs

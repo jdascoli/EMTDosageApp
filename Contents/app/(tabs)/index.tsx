@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useLayoutEffect } from "react";
 import { router } from 'expo-router';
 import { FlatList, TouchableOpacity, StyleSheet, useColorScheme, Text, View, TextInput, Modal } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
@@ -7,14 +7,7 @@ import { WarningPopup } from '@/components/warningPopup.tsx';
 import { Ionicons } from '@expo/vector-icons';
 import { SearchHistory } from "@/components/SearchHistory";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
-
-const medications = [
-  { id: "1", name: "Epinephrine" },
-  { id: "2", name: "Aspirin" },
-  { id: "3", name: "Nitroglycerin" },
-  { id: "4", name: "Albuterol" },
-  { id: "5", name: "Naloxone" },
-];
+import { getAllMedications } from "@/database/medications";
         
 let hasShownWarningThisSession = false;
 
@@ -25,6 +18,15 @@ export default function HomeScreen() {
   const [showWarning, setShowWarning] = useState(!hasShownWarningThisSession);
   const [filterVisible, setFilterVisible] = useState(false);
   const [sortOption, setSortOption] = useState<"default" | "az" | "za">("default");
+  const [medications, setMedications] = useState<{ id: string; name: string }[]>([]);
+
+  useLayoutEffect(() => {
+    const loadMeds = async () => {
+      const meds = await getAllMedications();
+      setMedications(meds as { id: string; name: string }[]);
+    };
+    loadMeds();
+  }, []);
 
    const handleCloseWarning = () => {
     setShowWarning(false);
