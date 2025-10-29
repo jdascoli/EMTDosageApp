@@ -6,13 +6,13 @@ import { IconSymbol } from "@/components/ui/IconSymbol";
 import TabBarBackground from "@/components/ui/TabBarBackground";
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
-import db, { initializeDB, upsertMedication } from "@/database/medications";
+import db, { initializeDB, upsertMedication, upsertDosage } from "@/database/medications";
 import { useEffect } from 'react';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
 
-useEffect(() => {
+  useEffect(() => {
     const setupDB = async () => {
       await initializeDB();
 
@@ -50,6 +50,13 @@ useEffect(() => {
         "Blocks opioid receptors to reverse overdoses.",
         "There are no absolute contraindications to naloxone use in emergencies. The only relative contraindication is known hypersensitivity to naloxone."
       );
+
+      await upsertDosage("Epinephrine", 0.01, "mg", 0.3, null, 0, "Standard");
+      await upsertDosage("Aspirin", 5, "mg", 325, null, 18, "Standard");
+      await upsertDosage("Nitroglycerin", null, "mg", null, 0.4, 18, "Standard");
+      await upsertDosage("Albuterol", 0.15, "mg", 5, null, 0, "Standard");
+      await upsertDosage("Naloxone", 0.1, "mg", 2, null, 0, "Standard");
+      await upsertDosage("Naloxone", 0.12, "mg", 2, null, 0, "ExampleUsage");
     };
 
     setupDB();

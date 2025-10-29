@@ -4,7 +4,7 @@ import { useLocalSearchParams, router } from "expo-router";
 import { ThemedView } from "@/components/ThemedView";
 import { ThemedText } from "@/components/ThemedText";
 import RNPickerSelect from "react-native-picker-select";
-import { getMedicationByName } from "@/database/medications";
+import { getMedicationByName, getDosagesByMedication } from "@/database/medications";
 
 export default function MedicationsDetailScreen() {
   const scheme = useColorScheme();
@@ -14,30 +14,18 @@ export default function MedicationsDetailScreen() {
   const [age, setAge] = useState("");
   const [result, setResult] = useState<{ dose: number; unit: string } | null>(null);
   const [dropDownSelection, setDropDownSelection] = useState<number | null>(null);
+  const [dosages, setDosages] = useState<any[]>([]);
 
-const dosageGuidelines: Record<string, { perKg?: number; unit: string; maxDose?: number; fixedDose?: number; minAge?: number;}> = {
-  Epinephrine: { perKg: 0.01, unit: "mg", maxDose: 0.3, minAge:0 },
-  Aspirin: { perKg: 5, unit: "mg", maxDose: 325, minAge:18 },
-  Nitroglycerin: { unit: "mg", fixedDose: 0.4, minAge:18 },
-  Albuterol: { perKg: 0.15, unit: "mg", maxDose: 5, minAge:0 },
-  Naloxone: { perKg: 0.1, unit: "mg", maxDose: 2, minAge:0 },
-};
+useEffect(() => {
+  const loadDosages = async () => {
+    const data = await getDosagesByMedication(name as string);
+    setDosages(data);
+  };
+  loadDosages();
+}, [name]);
 
-const dropDownDosageOptions = [
-    { medId: "Epinephrine",   perKg: 0.01, unit: "mg", usage: "Standard" },
-    { medId: "Aspirin",       perKg: 5.00, unit: "mg", usage: "Standard" },
-    { medId: "Nitroglycerin", perKg: 0.30, unit: "mg", usage: "Standard" },
-    { medId: "Albuterol",     perKg: 0.15, unit: "mg", usage: "Standard" },
-    { medId: "Naloxone",      perKg: 0.10, unit: "mg", usage: "Standard" },
-    { medId: "Naloxone",      perKg: 0.12, unit: "mg", usage: "ExampleUsage" },
-];
-// List of only Med-specific Entries
-const filteredDropdown = dropDownDosageOptions.filter(
-  (item) => item.medId === name
-);
-
-const dropDownList = filteredDropdown.map((item, index) => ({
-  label: `${item.usage}`,
+const dropDownList = dosages.map((item) => ({
+  label: item.usage,
   value: item.perKg,
 }));
 
@@ -102,8 +90,8 @@ const handleAgeChange = (text: string) => {
       setResult(null);
     }
   };
-  const medInfo = dosageGuidelines[name as string];
-  const isFixedDose = medInfo && !!medInfo.fixedDose;
+  const medInfo = dosages.find((d) => d.usage === "Standard") || dosages[0] || null;
+  const isFixedDose = medInfo && medInfo.fixedDose !== null;
     
   // Error message for zero weight
   const handleCalculation = () => {
@@ -208,7 +196,7 @@ const handleAgeChange = (text: string) => {
           onValueChange={(value) => setDropDownSelection(value)}
           items={dropDownList}
           value={dropDownSelection}
-          placeholder={{ label: "(No Case Selected)", value: dosageGuidelines.name }}
+          placeholder={{ label: "(No Case Selected)", value: null }}
         />
       </View>
 
@@ -216,12 +204,11 @@ const handleAgeChange = (text: string) => {
         Please enter your age and one of the weight inputs.
       </Text>
         
-        {typeof dosageGuidelines[name as string]?.minAge === "number" &&
-      dosageGuidelines[name as string].minAge! > 0 && (
+      {typeof medInfo?.minAge == 'number' && medInfo.minAge > 0 && (
         <Text style={[styles.warningText, {
           color: scheme === "dark" ? "#fbbf24" : "#d97706"
         }]}>
-          ⚠️ This medication is only suitable for patients aged {dosageGuidelines[name as string].minAge}+
+          ⚠️ This medication is only suitable for patients aged {medInfo.minAge}+
         </Text>
       )}
 

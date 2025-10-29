@@ -11,6 +11,18 @@ export const initializeDB = async () => {
       info TEXT,
       contraindications TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS dosages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      medId TEXT NOT NULL,
+      perKg REAL,
+      unit TEXT NOT NULL,
+      maxDose REAL,
+      fixedDose REAL,
+      minAge INTEGER,
+      usage TEXT DEFAULT 'Standard',
+      FOREIGN KEY (medId) REFERENCES medications(name)
+    );
   `);
 };
 
@@ -40,6 +52,39 @@ export const getMedicationByName = async (name: string) => {
     [name]
   );
   return result;
+};
+
+export const upsertDosage = async (
+  medId: string,
+  perKg: number | null,
+  unit: string,
+  maxDose: number | null,
+  fixedDose: number | null,
+  minAge: number | null,
+  usage: string = "Standard"
+) => {
+  await db.runAsync(
+    `INSERT OR REPLACE INTO dosages (id, medId, perKg, unit, maxDose, fixedDose, minAge, usage)
+     VALUES (
+       (SELECT id FROM dosages WHERE medId = ? AND usage = ?),
+       ?, ?, ?, ?, ?, ?, ?
+     )`,
+    [medId, usage, medId, perKg, unit, maxDose, fixedDose, minAge, usage]
+  );
+};
+
+export const getDosagesByMedication = async (medId: string) => {
+  const result = await db.getAllAsync("SELECT * FROM dosages WHERE medId = ?", [medId]);
+  return result as {
+    id: number;
+    medId: string;
+    perKg: number | null;
+    unit: string;
+    maxDose: number | null;
+    fixedDose: number | null;
+    minAge: number | null;
+    usage: string;
+  }[];
 };
 
 export default db;
