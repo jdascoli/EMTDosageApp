@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Platform } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
 
 import { HapticTab } from "@/components/HapticTab";
 import { IconSymbol } from "@/components/ui/IconSymbol";
@@ -7,13 +7,15 @@ import TabBarBackground from "@/components/ui/TabBarBackground";
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import db, { initializeDB, upsertMedication, upsertDosage } from "@/database/medications";
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const [dbReady, setDbReady] = useState(false);
 
   useEffect(() => {
     const setupDB = async () => {
+      try {
       await initializeDB();
 
       await db.execAsync(`
@@ -57,10 +59,24 @@ export default function TabLayout() {
       await upsertDosage("Albuterol", 0.15, "mg", 5, null, 0, "Standard");
       await upsertDosage("Naloxone", 0.1, "mg", 2, null, 0, "Standard");
       await upsertDosage("Naloxone", 0.12, "mg", 2, null, 0, "ExampleUsage");
+
+      setDbReady(true);
+    }
+    catch {
+      console.error("DB initialization failed:");
+    }
     };
 
     setupDB();
   }, []);
+
+  if (!dbReady) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color={Colors[colorScheme ?? "light"].tint} />
+      </View>
+    );
+  }
 
   return (
     <Tabs
