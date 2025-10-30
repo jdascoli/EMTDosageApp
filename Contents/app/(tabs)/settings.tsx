@@ -1,8 +1,9 @@
-import { useState } from 'react'; // added for useState
-import { StyleSheet, View, Text, Switch, Image } from 'react-native';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { router } from "expo-router";
+import { useState } from 'react'; // added for useState
+import { Image, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 
 export default function SettingsScreen() {
     const [isToggled, setIsToggled] = useState(false);
@@ -39,6 +40,15 @@ export default function SettingsScreen() {
           }>
           <ThemedView style={styles.titleContainer}>
             <ThemedText type="title">Settings</ThemedText>
+          </ThemedView>
+          <ThemedView style={styles.stepContainer}>
+            <ThemedText type="subtitle">Account</ThemedText>
+            <TouchableOpacity 
+              style={[styles.signupButton, { backgroundColor: "#007AFF" }]}
+              onPress={() => router.push("/register")}
+            >
+              <Text style={styles.signupButtonText}>Create Account</Text>
+            </TouchableOpacity>
           </ThemedView>
           <ThemedView style={styles.stepContainer}>
             <ThemedText type="subtitle">Change Mode</ThemedText>
@@ -78,6 +88,17 @@ const styles = StyleSheet.create({
   switchStyle: {
       alignItems: 'flex-start',
       paddingLeft: 0
+  },
+  signupButton: {
+    padding: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    marginVertical: 10,
+  },
+  signupButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
 
