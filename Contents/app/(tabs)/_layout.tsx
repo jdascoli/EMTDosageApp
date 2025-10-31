@@ -70,13 +70,13 @@ export default function TabLayout() {
     setupDB();
   }, []);
 
-  if (!dbReady) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color={Colors[colorScheme ?? "light"].tint} />
-      </View>
-    );
-  }
+  // if (!dbReady) {
+  //   return (
+  //     <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+  //       <ActivityIndicator size="large" color={Colors[colorScheme ?? "light"].tint} />
+  //     </View>
+  //   );
+  // }
 
   return (
     <Tabs
