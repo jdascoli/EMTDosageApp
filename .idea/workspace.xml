@@ -5,11 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="fb0b991e-2a9b-44fa-ac7f-21b3aceac628" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Contents/app/medication/[name].tsx" beforeDir="false" afterPath="$PROJECT_DIR$/Contents/app/medication/[name].tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Contents/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/Contents/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Contents/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/Contents/package.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -41,8 +37,8 @@
     "RunOnceActivity.readMode.enableVisualFormatting": "true",
     "cf.first.check.clang-format": "false",
     "cidr.known.project.marker": "true",
-    "git-widget-placeholder": "main",
-    "last_opened_file_path": "C:/Users/minju/OneDrive/문서/GitHub/EMTDosageApp_MJKIM",
+    "git-widget-placeholder": "mj-working-branch",
+    "last_opened_file_path": "C:/EMTEMTEMTEMTEMTEMTEMTEMTEMTEMTEMT/EMTDosageApp_MJKIM",
     "settings.editor.selected.configurable": "AndroidSdkUpdater"
   }
 }]]></component>
