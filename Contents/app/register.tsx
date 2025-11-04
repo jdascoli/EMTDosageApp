@@ -5,13 +5,13 @@ import { useColorScheme } from "@/hooks/useColorScheme";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
 
 export default function RegisterScreen() {
@@ -27,32 +27,52 @@ export default function RegisterScreen() {
     "Other"
   ];
 
-  // UPDATE: Modified handleRegister to use database
   const handleRegister = async () => {
-    if (!name.trim() || !certification || !password) {
-      Alert.alert("Error", "Please fill in all fields");
+    const pw = password.trim();
+    const cpw = confirmPassword.trim();
+
+    if (!name.trim()) {
+      Alert.alert("Error","Please enter your full name");
       return;
     }
 
-    if (password !== confirmPassword) {
+    if (name.trim().length < 2) {
+      Alert.alert("Invalid Name", "Please enter your full name");
+      return;
+    }
+
+    if (!certification.trim()) {
+      Alert.alert("Error","Please select your certification level");
+      return;
+    }
+
+    if (!pw) {
+      Alert.alert("Error","Please enter a password");
+      return;
+    }
+
+    if (!cpw) {
+      Alert.alert("Error","Please confirm your password");
+      return;
+    }
+
+    if (pw !== cpw) {
       Alert.alert("Error", "Passwords do not match");
       return;
     }
 
-    if (password.length < 6) {
+    if (pw.length < 6) {
       Alert.alert("Error", "Password must be at least 6 characters");
       return;
     }
 
     try {
-      // ADD: Check if user already exists
       const existingUser = await getUserByName(name.trim());
       if (existingUser) {
         Alert.alert("Error", "A user with this name already exists");
         return;
       }
 
-      // ADD: Create user in database
       await createUser(name.trim(), certification, password);
 
       console.log("User registered and saved to database");
@@ -83,7 +103,10 @@ export default function RegisterScreen() {
         </ThemedText>
 
         <View style={styles.inputContainer}>
+          <View style={styles.labelContainer}>
           <ThemedText style={styles.label}>Full Name</ThemedText>
+          <Text style={styles.requiredStar}>*</Text>
+          </View>
           <TextInput
             style={[
               styles.input,
@@ -98,10 +121,19 @@ export default function RegisterScreen() {
             value={name}
             onChangeText={setName}
           />
+          {!name && (
+            <Text style={styles.requiredHint}>Please enter your full name</Text>
+          )}
+          {name && name.trim().length < 2 && (
+            <Text style={styles.validationError}>Name must be at leat 2 characters</Text>
+          )}
         </View>
 
         <View style={styles.inputContainer}>
-          <ThemedText style={styles.label}>Certification Level</ThemedText>
+          <View style={styles.labelContainer}>
+            <ThemedText style={styles.label}>Certification Level</ThemedText>
+            <Text style={styles.requiredStar}>*</Text>
+          </View>
           <ScrollView style={styles.certificationContainer}>
             {certificationLevels.map((level) => (
               <TouchableOpacity
@@ -122,10 +154,16 @@ export default function RegisterScreen() {
               </TouchableOpacity>
             ))}
           </ScrollView>
+          {!certification && (
+            <Text style={styles.requiredHint}>Please select a certification level</Text>
+          )}
         </View>
 
         <View style={styles.inputContainer}>
-          <ThemedText style={styles.label}>Password</ThemedText>
+          <View style={styles.labelContainer}>
+            <ThemedText style={styles.label}>Password</ThemedText>
+            <Text style={styles.requiredStar}>*</Text>
+          </View>
           <TextInput
             style={[
               styles.input,
@@ -140,11 +178,22 @@ export default function RegisterScreen() {
             value={password}
             onChangeText={setPassword}
             secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
           />
+          {!password && (
+            <Text style={styles.requiredHint}>Please enter your password</Text>
+          )}
+          {password && password.length < 6 && (
+            <Text style={styles.validationError}>Password must be at least 6 characters</Text>
+          )}
         </View>
 
         <View style={styles.inputContainer}>
-          <ThemedText style={styles.label}>Confirm Password</ThemedText>
+          <View style={styles.labelContainer}>
+            <ThemedText style={styles.label}>Confirm Password</ThemedText>
+            <Text style={styles.requiredStar}>*</Text>
+          </View>
           <TextInput
             style={[
               styles.input,
@@ -159,7 +208,14 @@ export default function RegisterScreen() {
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
           />
+          {!confirmPassword ? (
+            <Text style={styles.requiredHint}>Please confirm your password</Text>
+          ) : password !== confirmPassword ? (
+            <Text style={styles.validationError}>Passwords do not match</Text>
+          ) : null}
         </View>
 
         <TouchableOpacity
@@ -203,13 +259,41 @@ const styles = StyleSheet.create({
     marginBottom: 40,
     opacity: 0.7,
   },
-  inputContainer: {
+   requiredNote: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
     marginBottom: 20,
+    fontStyle: "italic",
+  },
+   labelContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
   },
   label: {
     fontSize: 16,
     fontWeight: "600",
-    marginBottom: 8,
+  },
+  requiredStar: {
+    color: "#ff3b30",
+    fontSize: 16,
+    fontWeight: "bold",
+    marginLeft: 4,
+  },
+  requiredHint: {
+    color: "#ff3b30",
+    fontSize: 12,
+    marginTop: 4,
+    fontStyle: "italic",
+  },
+   validationError: {
+    color: "#ff3b30",
+    fontSize: 12,
+    marginTop: 4,
+  },
+  inputContainer: {
+    marginBottom: 20,
   },
   input: {
     height: 50,
