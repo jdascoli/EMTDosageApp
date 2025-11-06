@@ -3,6 +3,7 @@ import { ThemedView } from "@/components/ThemedView";
 import { createUser, getUserByName } from "@/database/medications"; // ADD: Import database functions
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { router } from "expo-router";
+import { hashPassword,validatePasswordStrength } from "@/lib/auth";
 import { useState } from "react";
 import {
   Alert,
@@ -66,6 +67,12 @@ export default function RegisterScreen() {
       return;
     }
 
+    const validation = validatePasswordStrength(pw);
+    if (!validation.isValid) {
+      Alert.alert("Weak Password", validation.message);
+      return;
+    }
+
     try {
       const existingUser = await getUserByName(name.trim());
       if (existingUser) {
@@ -73,7 +80,9 @@ export default function RegisterScreen() {
         return;
       }
 
-      await createUser(name.trim(), certification, password);
+      const hashedPassword = await hashPassword(password);
+      await createUser(name.trim(), certification, hashedPassword);
+
 
       console.log("User registered and saved to database");
       
