@@ -83,10 +83,10 @@ export default function SettingsScreen() {
       <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">Account</ThemedText>
         <TouchableOpacity
-          style={[styles.signupButton, { backgroundColor: "#007AFF" }]}
-          onPress={() => router.push("/register")}
+          style={[styles.logoutButton, { backgroundColor: "#007AFF" }]}
+          onPress={() => router.replace("/login")}
         >
-          <Text style={styles.signupButtonText}>Create Account</Text>
+          <Text style={styles.logoutButtonText}>Log Out</Text>
         </TouchableOpacity>
       </ThemedView>
 
@@ -188,6 +188,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 8,
     color: '#007AFF',
+  },
+  logoutButton: {
+    padding: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    marginVertical: 10,
+  },
+  logoutButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
 
