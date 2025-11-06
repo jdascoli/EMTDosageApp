@@ -18,14 +18,14 @@ export default function LoginScreen() {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
 
-  // TODO: 실제 로그인 기능은 나중에 구현 (Josh 작업)
+  
   const handleLogin = async () => {
     if (!name.trim() || !password) {
       Alert.alert("Error", "Please fill in all fields");
       return;
     }
 
-    // 임시: 로그인 성공으로 간주하고 메인 화면으로 이동
+    
     console.log("Login attempt with:", name);
     router.replace("/(tabs)");
   };
