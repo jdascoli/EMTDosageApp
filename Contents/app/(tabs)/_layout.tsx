@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { ActivityIndicator, Platform, View } from 'react-native';
+import { Platform} from 'react-native';
 
 import { HapticTab } from "@/components/HapticTab";
 import { IconSymbol } from "@/components/ui/IconSymbol";
@@ -17,15 +17,6 @@ export default function TabLayout() {
     const setupDB = async () => {
       try {
       await initializeDB();
-
-      await db.execAsync(`
-        DELETE FROM medications
-        WHERE rowid NOT IN (
-          SELECT MIN(rowid)
-          FROM medications
-          GROUP BY name
-        );
-      `);
 
       await upsertMedication(
         "Epinephrine",
@@ -60,6 +51,15 @@ export default function TabLayout() {
       await upsertDosage("Naloxone", 0.1, "mg", 2, null, 0, "Standard");
       await upsertDosage("Naloxone", 0.12, "mg", 2, null, 0, "ExampleUsage");
 
+      await db.execAsync(`
+        DELETE FROM medications
+        WHERE rowid NOT IN (
+          SELECT MIN(rowid)
+          FROM medications
+          GROUP BY name
+        );
+      `);
+
       setDbReady(true);
     }
     catch {
@@ -69,14 +69,6 @@ export default function TabLayout() {
 
     setupDB();
   }, []);
-
-  // if (!dbReady) {
-  //   return (
-  //     <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-  //       <ActivityIndicator size="large" color={Colors[colorScheme ?? "light"].tint} />
-  //     </View>
-  //   );
-  // }
 
   return (
     <Tabs
