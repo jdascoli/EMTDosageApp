@@ -4,6 +4,7 @@ const db = SQLite.openDatabaseSync("medications.db");
 
 // Create the medications table if it doesn't exist
 export const initializeDB = async () => {
+  await db.execAsync(`PRAGMA foreign_keys = ON;`);
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS medications (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -21,7 +22,7 @@ export const initializeDB = async () => {
       fixedDose REAL,
       minAge INTEGER,
       usage TEXT DEFAULT 'Standard',
-      FOREIGN KEY (medId) REFERENCES medications(name)
+      FOREIGN KEY (medId) REFERENCES medications(name) ON DELETE CASCADE
     );
      /* Create users table */
     CREATE TABLE IF NOT EXISTS users (
@@ -32,6 +33,8 @@ export const initializeDB = async () => {
       createdAt TEXT NOT NULL
     );
   `);
+ const result = await db.getFirstAsync(`PRAGMA foreign_keys`) as { foreign_keys: number } | null;
+  console.log('Foreign keys enabled:', result?.foreign_keys);
 };
 
 // Insert or update medication
@@ -71,6 +74,10 @@ export const upsertDosage = async (
   minAge: number | null,
   usage: string = "Standard"
 ) => {
+  const medExists = await medicationExists(medId);
+  if (!medExists) {
+    throw new Error(`Medication "${medId}" does not exist`);
+  }
   await db.runAsync(
     `INSERT OR REPLACE INTO dosages (id, medId, perKg, unit, maxDose, fixedDose, minAge, usage)
      VALUES (
@@ -94,6 +101,146 @@ export const getDosagesByMedication = async (medId: string) => {
     usage: string;
   }[];
 };
+// New medication insertion
+export const addNewMedication = async (
+  name: string,
+  info: string,
+  contraindications: string
+) => {
+  try {
+    const result = await db.runAsync(
+      `INSERT INTO medications (name, info, contraindications)
+       VALUES (?, ?, ?)`,
+      [name, info, contraindications]
+    );
+    return result;
+  } catch (error: any) {
+    if (error.message?.includes('UNIQUE constraint failed')) {
+      throw new Error(`Medication "${name}" already exists`);
+    }
+    throw error;
+  }
+};
+
+// Medication update
+export const updateMedicationInfo = async (
+  name: string,
+  info: string,
+  contraindications: string
+) => {
+  const result = await db.runAsync(
+    `UPDATE medications 
+     SET info = ?, contraindications = ?
+     WHERE name = ?`,
+    [info, contraindications, name]
+  );
+  
+  if (result.changes === 0) {
+    throw new Error(`Medication "${name}" not found`);
+  }
+  
+  return result;
+};
+
+// New dosage insertion with existence check
+export const addNewDosage = async (
+  medId: string,
+  perKg: number | null,
+  unit: string,
+  maxDose: number | null,
+  fixedDose: number | null,
+  minAge: number | null,
+  usage: string = "Standard"
+) => {
+  const medExists = await medicationExists(medId);
+  if (!medExists) {
+    throw new Error(`Medication "${medId}" does not exist`);
+  }
+
+  const result = await db.runAsync(
+    `INSERT INTO dosages (medId, perKg, unit, maxDose, fixedDose, minAge, usage)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [medId, perKg, unit, maxDose, fixedDose, minAge, usage]
+  );
+  return result;
+};
+
+// Dosage update
+export const updateDosage = async (
+  dosageId: number,
+  perKg: number | null,
+  unit: string,
+  maxDose: number | null,
+  fixedDose: number | null,
+  minAge: number | null,
+  usage: string = "Standard"
+) => {
+  const result = await db.runAsync(
+    `UPDATE dosages 
+     SET perKg = ?, unit = ?, maxDose = ?, fixedDose = ?, minAge = ?, usage = ?
+     WHERE id = ?`,
+    [perKg, unit, maxDose, fixedDose, minAge, usage, dosageId]
+  );
+  
+  if (result.changes === 0) {
+    throw new Error(`Dosage with ID ${dosageId} not found`);
+  }
+  
+  return result;
+};
+
+// Simplify medication deletion with CASCADE
+export const deleteMedication = async (name: string) => {
+  const result = await db.runAsync(`DELETE FROM medications WHERE name = ?`, [name]);
+  
+  if (result.changes === 0) {
+    throw new Error(`Medication "${name}" not found`);
+  }
+  
+  return result;
+};
+
+// Dosage deletion
+export const deleteDosage = async (dosageId: number) => {
+  const result = await db.runAsync(`DELETE FROM dosages WHERE id = ?`, [dosageId]);
+  
+  if (result.changes === 0) {
+    throw new Error(`Dosage with ID ${dosageId} not found`);
+  }
+  
+  return result;
+};
+
+// Function to get medication with all dosages
+export const getMedicationWithDosages = async (name: string) => {
+  const medication = await getMedicationByName(name);
+  if (!medication) return null;
+  
+  const dosages = await getDosagesByMedication(name);
+  return {
+    ...medication,
+    dosages
+  };
+};
+
+// Medication existence check
+export const medicationExists = async (name: string) => {
+  const result = await db.getFirstAsync(
+    "SELECT 1 FROM medications WHERE name = ?",
+    [name]
+  );
+  return !!result;
+};
+
+// Dosage existence check
+export const dosageExists = async (dosageId: number) => {
+  const result = await db.getFirstAsync(
+    "SELECT 1 FROM dosages WHERE id = ?",
+    [dosageId]
+  );
+  return !!result;
+};
+
 export const createUser = async (
   name: string,
   certification: string,
