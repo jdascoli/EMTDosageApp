@@ -12,7 +12,8 @@ export const initializeDB = async () => {
       info TEXT,
       contraindications TEXT
     );
-
+  `)
+  await db.execAsync(`
     CREATE TABLE IF NOT EXISTS dosages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       medId TEXT NOT NULL,
@@ -24,6 +25,8 @@ export const initializeDB = async () => {
       usage TEXT DEFAULT 'Standard',
       FOREIGN KEY (medId) REFERENCES medications(name) ON DELETE CASCADE
     );
+  `)
+  await db.execAsync(`
      /* Create users table */
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -33,7 +36,7 @@ export const initializeDB = async () => {
       createdAt TEXT NOT NULL
     );
   `);
- const result = await db.getFirstAsync(`PRAGMA foreign_keys`) as { foreign_keys: number } | null;
+  const result = await db.getFirstAsync(`PRAGMA foreign_keys`) as { foreign_keys: number } | null;
   console.log('Foreign keys enabled:', result?.foreign_keys);
 };
 
