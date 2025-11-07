@@ -48,7 +48,7 @@ export default function HomeScreen() {
   };
 
   let testUserCertLevel = 2;
-  let filteredMeds = medications.filter((med) => (med.name.toLowerCase().includes(search.trim().toLowerCase())) && (med.minCert > testUserCertLevel));
+  let filteredMeds = medications.filter((med) => (med.name.toLowerCase().includes(search.trim().toLowerCase())) && (med.minCert >= testUserCertLevel));
   if (sortOption === "az") filteredMeds = filteredMeds.slice().sort((a, b) => a.name.localeCompare(b.name));
   else if (sortOption === "za") filteredMeds = filteredMeds.slice().sort((a, b) => b.name.localeCompare(a.name));
   
