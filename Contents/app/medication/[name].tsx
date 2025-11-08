@@ -34,12 +34,13 @@ const [medication, setMedication] = useState<{
   name?: string;
   info?: string;
   contraindications?: string;
+  minCert?: number;
 } | null>(null);
 
 useEffect(() => {
   const loadMedication = async () => {
     const med = await getMedicationByName(name as string);
-    if (med) setMedication(med as {id: string, name: string; info: string; contraindications: string;});
+    if (med) setMedication(med as {id: string, name: string; info: string; contraindications: string; minCert: number; });
     else setMedication(null);
   };
   loadMedication();
@@ -62,7 +63,7 @@ const handleAgeChange = (text: string) => {
     if (text === "" || /^\d+$/.test(text)){
       setLbsWeight(text);
 
-      //Auto convvert to kg
+      //Auto convert to kg
       if(text && text !== "0") {
         const kgValue = (parseInt(text) / 2.20462).toFixed(1);
         setKgWeight(kgValue);

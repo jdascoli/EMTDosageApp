@@ -10,9 +10,10 @@ export const initializeDB = async () => {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT UNIQUE NOT NULL,
       info TEXT,
-      contraindications TEXT
+      contraindications TEXT,
+      minCert INTEGER DEFAULT 1
     );
-  `)
+  `);
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS dosages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -25,7 +26,7 @@ export const initializeDB = async () => {
       usage TEXT DEFAULT 'Standard',
       FOREIGN KEY (medId) REFERENCES medications(name) ON DELETE CASCADE
     );
-  `)
+  `);
   await db.execAsync(`
      /* Create users table */
     CREATE TABLE IF NOT EXISTS users (
@@ -42,14 +43,15 @@ export const initializeDB = async () => {
 
 // Insert or update medication
 export const upsertMedication = async (
-  name: string,
-  info: string,
-  contraindications: string
+  nameE: string,
+  infoE: string,
+  contraindicationsE: string,
+  minCertE: number
 ) => {
   await db.runAsync(
-    `INSERT OR REPLACE INTO medications (name, info, contraindications)
-     VALUES (?, ?, ?)`,
-    [name, info, contraindications]
+    `INSERT OR REPLACE INTO medications (name, info, contraindications, minCert)
+     VALUES (?, ?, ?, ?)`,
+    [nameE, infoE, contraindicationsE, minCertE]
   );
 };
 
@@ -108,13 +110,14 @@ export const getDosagesByMedication = async (medId: string) => {
 export const addNewMedication = async (
   name: string,
   info: string,
-  contraindications: string
+  contraindications: string,
+  minCert: number
 ) => {
   try {
     const result = await db.runAsync(
-      `INSERT INTO medications (name, info, contraindications)
-       VALUES (?, ?, ?)`,
-      [name, info, contraindications]
+      `INSERT INTO medications (name, info, contraindications, minCert)
+       VALUES (?, ?, ?, ?)`,
+      [name, info, contraindications, minCert]
     );
     return result;
   } catch (error: any) {
@@ -132,16 +135,16 @@ export const updateMedicationInfo = async (
   contraindications: string
 ) => {
   const result = await db.runAsync(
-    `UPDATE medications 
+    `UPDATE medications
      SET info = ?, contraindications = ?
      WHERE name = ?`,
     [info, contraindications, name]
   );
-  
+
   if (result.changes === 0) {
     throw new Error(`Medication "${name}" not found`);
   }
-  
+
   return result;
 };
 

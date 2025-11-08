@@ -18,12 +18,12 @@ export default function HomeScreen() {
   const [showWarning, setShowWarning] = useState(!hasShownWarningThisSession);
   const [filterVisible, setFilterVisible] = useState(false);
   const [sortOption, setSortOption] = useState<"default" | "az" | "za">("default");
-  const [medications, setMedications] = useState<{ id: string; name: string }[]>([]);
+  const [medications, setMedications] = useState<{ id: string; name: string; minCert: number; }[]>([]);
 
   useLayoutEffect(() => {
     const loadMeds = async () => {
       const meds = await getAllMedications();
-      setMedications(meds as { id: string; name: string }[]);
+      setMedications(meds as { id: string; name: string; minCert: number; }[]);
     };
     loadMeds();
   }, []);
@@ -47,12 +47,13 @@ export default function HomeScreen() {
     setSearch(text);
   };
 
-  let filteredMeds = medications.filter((med) => med.name.toLowerCase().includes(search.toLowerCase()));
+  let testUserCertLevel = 2;
+  let filteredMeds = medications.filter((med) => (med.name.toLowerCase().includes(search.trim().toLowerCase())) && (med.minCert >= testUserCertLevel));
   if (sortOption === "az") filteredMeds = filteredMeds.slice().sort((a, b) => a.name.localeCompare(b.name));
   else if (sortOption === "za") filteredMeds = filteredMeds.slice().sort((a, b) => b.name.localeCompare(a.name));
   
 
-  const renderItem = ({ item }: { item: { id: string; name: string } }) => (
+  const renderItem = ({ item }: { item: { id: string; name: string; minCert: number; } }) => (
     <TouchableOpacity
       style={[styles.itemContainer, scheme === "dark" ? styles.itemContainerDark : styles.itemContainerLight]}
       onPress={() => handlePress(item.name)} activeOpacity={0.7}>
