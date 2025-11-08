@@ -144,24 +144,31 @@ export default function RegisterScreen() {
             <Text style={styles.requiredStar}>*</Text>
           </View>
           <ScrollView style={styles.certificationContainer}>
-            {certificationLevels.map((level) => (
+            {certificationLevels.map((level) => {
+              const isSelected = certification === level;
+              return (
               <TouchableOpacity
                 key={level}
                 style={[
                   styles.certificationOption,
-                  certification === level && styles.certificationSelected,
                   { 
                     backgroundColor: scheme === "dark" ? "#1e293b" : "#fff",
-                    borderColor: scheme === "dark" ? "#475569" : "gray"
+                    borderColor: isSelected ? "#007AFF" : (scheme === "dark" ? "#475569" : "gray"),
+                    shadowColor: isSelected ? "#007AFF" : "transparent",
+                    shadowOffset: { width: 0, height: 0 },
+                    shadowOpacity: isSelected ? 0.9 : 0,
+                    shadowRadius: isSelected ? 10 : 0,
+                    elevation: isSelected ? 6 : 0,
                   }
                 ]}
                 onPress={() => setCertification(level)}
               >
-                <ThemedText style={certification === level ? styles.certificationTextSelected : {}}>
+                <ThemedText style={isSelected ? styles.certificationTextSelected : styles.certificationText}>
                   {level}
                 </ThemedText>
               </TouchableOpacity>
-            ))}
+              );
+          })}
           </ScrollView>
           {!certification && (
             <Text style={styles.requiredHint}>Please select a certification level</Text>
@@ -239,7 +246,7 @@ export default function RegisterScreen() {
           onPress={() => router.back()}
         >
           <ThemedText style={styles.backText}>
-            Back to Settings
+            Back to Log in page
           </ThemedText>
         </TouchableOpacity>
       </ScrollView>
@@ -316,16 +323,22 @@ const styles = StyleSheet.create({
   },
   certificationOption: {
     padding: 16,
-    borderWidth: 1,
-    borderRadius: 8,
-    marginBottom: 8,
+    borderWidth: 2,
+    borderRadius: 12,
+    marginBottom: 10,
+    alignItems: "center",
+    justifyContent: "center",
   },
   certificationSelected: {
     backgroundColor: "#007AFF",
     borderColor: "#007AFF",
   },
+  certificationText: {
+    color: "#111",
+    fontWeight: "500",
+  },
   certificationTextSelected: {
-    color: "#fff",
+    color: "#007AFF",
     fontWeight: "600",
   },
   registerButton: {
