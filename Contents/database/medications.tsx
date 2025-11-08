@@ -37,6 +37,17 @@ export const initializeDB = async () => {
       createdAt TEXT NOT NULL
     );
   `);
+  try {
+    const columns = await db.getAllAsync(`PRAGMA table_info(medications);`);
+    const hasMinCert = columns.some((c: any) => c.name === 'minCert');
+
+    if (!hasMinCert) {
+      await db.execAsync(`ALTER TABLE medications ADD COLUMN minCert INTEGER DEFAULT 1;`);
+      console.log("Added missing minCert column");
+    }
+  } catch (err) {
+    console.warn("Failed to alter medications table:", err);
+  }
   const result = await db.getFirstAsync(`PRAGMA foreign_keys`) as { foreign_keys: number } | null;
   console.log('Foreign keys enabled:', result?.foreign_keys);
 };
