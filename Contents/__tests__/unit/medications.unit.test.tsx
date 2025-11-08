@@ -21,7 +21,7 @@ describe("Medication DB Functions", () => {
   });
 
   it("inserts and retrieves a medication", async () => {
-    await upsertMedication("Epinephrine", "Used for anaphylaxis", "None");
+    await upsertMedication("Epinephrine", "Used for anaphylaxis", "None", 1);
      const med = (await getMedicationByName("Epinephrine")) as {
       id: number;
       name: string;
@@ -35,8 +35,8 @@ describe("Medication DB Functions", () => {
   });
 
   it("replaces duplicate medication entries", async () => {
-    await upsertMedication("Aspirin", "Old Info", "None");
-    await upsertMedication("Aspirin", "Updated Info", "Warning");
+    await upsertMedication("Aspirin", "Old Info", "None", 1);
+    await upsertMedication("Aspirin", "Updated Info", "Warning", 1);
     const meds = (await getAllMedications()) as {
       id: number;
       name: string;
@@ -49,7 +49,7 @@ describe("Medication DB Functions", () => {
   });
 
   it("inserts and retrieves dosage information", async () => {
-    await upsertMedication("Naloxone", "Reverses opioids", "None");
+    await upsertMedication("Naloxone", "Reverses opioids", "None", 1);
     await upsertDosage("Naloxone", 0.1, "mg", 2, null, 0, "Standard");
 
     const dosages = (await getDosagesByMedication("Naloxone")) as {

@@ -18,9 +18,13 @@ module.exports = {
         'expo-file-system',
         'expo-modules-core',
         'expo-sqlite',
+        'expo-secure-store',
+        'expo-crypto',
+        'expo-router',
       ].join('|') +
       ')/)',
   ],
   testPathIgnorePatterns: ['/node_modules/', '/android/', '/ios/'],
   setupFilesAfterEnv: ['@testing-library/jest-native/extend-expect'],
+  testEnvironment: 'node',
 };

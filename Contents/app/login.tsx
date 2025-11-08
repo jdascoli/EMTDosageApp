@@ -12,6 +12,10 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
+import { getUserByName } from "@/database/medications";
+import { createSession } from "@/lib/session";
+import { verifyPassword } from "@/lib/auth";
+
 
 export default function LoginScreen() {
   const scheme = useColorScheme();
@@ -25,9 +29,28 @@ export default function LoginScreen() {
       return;
     }
 
-    
-    console.log("Login attempt with:", name);
-    router.replace("/(tabs)");
+    try {
+      const user = await getUserByName(name.trim()); //get user
+      if (!user) {
+        Alert.alert("Error", "User not found");
+        return;
+      }
+
+      const valid = await verifyPassword(password, user.password); //verify password
+      if (!valid) {
+        Alert.alert("Error", "Incorrect password");
+        return;
+      }
+
+      await createSession(user.id, user.name); //create session
+
+      console.log("Session created for:", user.name);
+      router.replace("/(tabs)");
+    }
+    catch (err) {
+      console.error("Login error:", err);
+      Alert.alert("Error", "Failed to log in. Please try again.");
+    }
   };
 
   return (
