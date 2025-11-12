@@ -14,25 +14,25 @@ type CertificationLevel = 'EMT-B' | 'EMT-I' | 'AEMT' | 'Paramedic';
 export default function SettingsScreen() {
   const [isToggled, setIsToggled] = useState(false);
 
-  const toggleFeature = (featureName: string, isEnabled: boolean) => {
-    // console.log("toggleFeature called with", featureName, isEnabled);
-    switch (featureName) {
-      case "EmployeeType":
-        if (isEnabled) {
-          console.log("Paramedic Mode Active");
-          // Activate Paramedic Mode
-          setIsToggled(true);
-        } else {
-          console.log("EMT Mode Active");
-          // Activate EMT Mode
-          setIsToggled(false);
-        }
-        break;
+  // const toggleFeature = (featureName: string, isEnabled: boolean) => {
+  //   // console.log("toggleFeature called with", featureName, isEnabled);
+  //   switch (featureName) {
+  //     case "EmployeeType":
+  //       if (isEnabled) {
+  //         console.log("Paramedic Mode Active");
+  //         // Activate Paramedic Mode
+  //         setIsToggled(true);
+  //       } else {
+  //         console.log("EMT Mode Active");
+  //         // Activate EMT Mode
+  //         setIsToggled(false);
+  //       }
+  //       break;
 
-      default:
-        console.log("Unknown feature");
-    }
-  };
+  //     default:
+  //       console.log("Unknown feature");
+  //   }
+  // };
 
   const [certLevel, setCertLevel] = useState<CertificationLevel>('EMT-B');
   const [isLoading, setIsLoading] = useState(true);
@@ -90,7 +90,7 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </ThemedView>
 
-       {/* Change Mode Section */}
+       {/* Change Mode Section
     <ThemedView style={styles.stepContainer}>
       <ThemedText type="subtitle">Change Mode</ThemedText>
       <View style={styles.switchStyle}>
@@ -103,7 +103,7 @@ export default function SettingsScreen() {
           value={isToggled}
         />
       </View>
-    </ThemedView>
+    </ThemedView> */}
 
     {/* Certification Level Section */}
     <ThemedView style={styles.stepContainer}>

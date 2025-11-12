@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getCurrentUserName } from "@/lib/session";
 
 export interface SearchHistoryItem {
   id: number;
@@ -12,21 +13,35 @@ const STORAGE_KEY = "@medicationSearchHistory";
 export function useSearchHistory() {
   const [recentSearches, setRecentSearches] = useState<SearchHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [storageKey, setStorageKey] = useState<string | null>(null);
 
-  // Load search history from AsyncStorage on component mount
   useEffect(() => {
-    loadRecentSearches();
+    const loadUserKey = async () => {
+      setIsLoading(true);
+      try {
+        const user = await getCurrentUserName(); //get username
+        const key = user ? `@medicationSearchHistory_${user}` : "@medicationSearchHistory_guest";
+        setStorageKey(key);
+        await loadRecentSearches(key);
+      } catch (err) {
+        console.error("Error initializing search history:", err);
+        setRecentSearches([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadUserKey();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const loadRecentSearches = async () => {
+  
+  const loadRecentSearches = useCallback(async (key: string) => {
     try {
       setIsLoading(true);
-      const stored = await AsyncStorage.getItem(STORAGE_KEY);
+      const stored = await AsyncStorage.getItem(key);
       console.log("Loaded from storage:", stored); // Debug log
 
       if (stored) {
-        const history = JSON.parse(stored) as SearchHistoryItem[];
-        setRecentSearches(history);
+        setRecentSearches(JSON.parse(stored));
       } else {
         setRecentSearches([]);
       }
@@ -36,9 +51,9 @@ export function useSearchHistory() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const addSearchTerm = async (term: string) => {
+  const addSearchTerm = useCallback(async (term: string) => {
     if (!term.trim()) return;
 
     const cleanTerm = term.trim().toLowerCase();
@@ -50,48 +65,43 @@ export function useSearchHistory() {
 
     try {
       // Get current searches first
-      const stored = await AsyncStorage.getItem(STORAGE_KEY);
-      let currentSearches: SearchHistoryItem[] = [];
+      if(!storageKey)return;
+      const stored = await AsyncStorage.getItem(storageKey);
+      const current = stored ? (JSON.parse(stored) as SearchHistoryItem[]) : [];
 
-      if (stored) {
-        currentSearches = JSON.parse(stored) as SearchHistoryItem[];
-      }
-
-      // Remove duplicates and keep only last 5 searches
-      const filtered = currentSearches.filter(
-        (item) => item.term !== newItem.term
-      );
-      const updated = [newItem, ...filtered].slice(0, 5);
-
+      const filtered = current.filter((item) => item.term !== newItem.term);
+      const updated = [newItem, ...filtered].slice(0, 10);
       // Save to AsyncStorage and update state
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      await AsyncStorage.setItem(storageKey, JSON.stringify(updated));
       setRecentSearches(updated);
       console.log("Search term saved:", cleanTerm);
     } catch (error) {
       console.error("Error saving search term:", error);
     }
-  };
+  }, [storageKey]);
 
-  const clearHistory = async () => {
+  const clearHistory = useCallback(async () => {
+    if (!storageKey) return;
     try {
-      await AsyncStorage.removeItem(STORAGE_KEY);
+      await AsyncStorage.removeItem(storageKey);
       setRecentSearches([]);
       console.log("Search history cleared");
     } catch (error) {
       console.error("Error clearing search history:", error);
     }
-  };
+  }, [storageKey]);
 
-  const removeSearchTerm = async (id: number) => {
+  const removeSearchTerm = useCallback(async (id: number) => {
+    if (!storageKey) return;
     try {
       const updated = recentSearches.filter((item) => item.id !== id);
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      await AsyncStorage.setItem(storageKey, JSON.stringify(updated));
       setRecentSearches(updated);
       console.log("Removed search term with id:", id);
     } catch (error) {
       console.error("Error removing search term:", error);
     }
-  };
+  }, [recentSearches, storageKey]);
 
   return {
     recentSearches,
@@ -99,6 +109,6 @@ export function useSearchHistory() {
     addSearchTerm,
     clearHistory,
     removeSearchTerm,
-    refresh: loadRecentSearches,
+    refresh: () => storageKey && loadRecentSearches(storageKey),
   };
 }
