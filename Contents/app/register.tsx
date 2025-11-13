@@ -4,7 +4,7 @@ import { createUser, getUserByName } from "@/database/medications"; // ADD: Impo
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { router } from "expo-router";
 import { hashPassword,validatePasswordStrength } from "@/lib/auth";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Alert,
   ScrollView,
@@ -14,6 +14,8 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
+import * as Linking from "expo-linking";
+import { initializeDB } from "@/database/medications";
 
 export default function RegisterScreen() {
   const scheme = useColorScheme();
@@ -22,11 +24,56 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  useEffect(() => {
+    const setup = async () => {
+      try {
+        await initializeDB();
+      } catch (err) {
+        console.error("DB failed to initialize:", err);
+      }
+    };
+    setup();
+  }, []);
+
   const certificationLevels = [
     "EMT (Emergency Medical Technician)",
     "Paramedic",
     "Other"
   ];
+  const [certNumber, setCertNumber] = useState("");
+  const [certLevel, setCertLevel] = useState<number>(1);
+
+    const certificationMap: Record<string, number> = {
+      "EMT (Emergency Medical Technician)": 1,
+      "Paramedic": 3,
+      Other: 1,
+    };
+
+    const handleSelectLevel = (levelString: string) => {
+      setCertification(levelString);
+      setCertLevel(certificationMap[levelString] ?? 1);
+    };
+
+    const formatCertificationNumber = (input: string) => {
+      let numbersOnly = input.replace(/\D/g, "");
+
+      if (numbersOnly.length > 12) {
+        numbersOnly = numbersOnly.slice(0, 12);
+      }
+
+      if (numbersOnly.length > 8) {
+        return (
+          numbersOnly.slice(0, 4) + "-" +
+          numbersOnly.slice(4, 8) + "-" +
+          numbersOnly.slice(8)
+        );
+      } else if (numbersOnly.length > 4) {
+        return numbersOnly.slice(0, 4) + "-" + numbersOnly.slice(4);
+      }
+
+      return numbersOnly;
+    };
+
 
   const handleRegister = async () => {
     const pw = password.trim();
@@ -44,6 +91,11 @@ export default function RegisterScreen() {
 
     if (!certification.trim()) {
       Alert.alert("Error","Please select your certification level");
+      return;
+    }
+
+    if (!certNumber.trim()) {
+      Alert.alert("Error", "Please enter your certification number");
       return;
     }
 
@@ -80,8 +132,10 @@ export default function RegisterScreen() {
         return;
       }
 
+      const finalCertLevel = certLevel ?? 1; 
+      const finalCertNumber = certNumber.trim() || "";
       const hashedPassword = await hashPassword(password);
-      await createUser(name.trim(), certification, hashedPassword);
+      await createUser(name.trim(), certification, hashedPassword, finalCertNumber, finalCertLevel);
 
 
       console.log("User registered and saved to database");
@@ -161,7 +215,7 @@ export default function RegisterScreen() {
                     elevation: isSelected ? 6 : 0,
                   }
                 ]}
-                onPress={() => setCertification(level)}
+                onPress={() => handleSelectLevel(level)}
               >
                 <ThemedText style={isSelected ? styles.certificationTextSelected : styles.certificationText}>
                   {level}
@@ -174,6 +228,42 @@ export default function RegisterScreen() {
             <Text style={styles.requiredHint}>Please select a certification level</Text>
           )}
         </View>
+
+        <View style={styles.inputContainer}>
+          <View style={styles.labelContainer}>
+            <ThemedText style={styles.label}>Certification Number</ThemedText>
+            <Text style={styles.requiredStar}>*</Text>
+          </View>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: scheme === "dark" ? "#1e293b" : "#fff",
+                color: scheme === "dark" ? "#f8fafc" : "#111",
+                borderColor: scheme === "dark" ? "#475569" : "gray",
+              },
+            ]}
+            placeholder="####-####-####"
+            placeholderTextColor={scheme === "dark" ? "#94a3b8" : "#999"}
+            value={certNumber}
+            onChangeText={(val) => setCertNumber(formatCertificationNumber(val))}
+            autoCapitalize="characters"
+            keyboardType="number-pad"
+            inputMode="numeric"
+            maxLength={14}
+          />
+          {!certNumber && (
+            <Text style={styles.requiredHint}>Certification number is required</Text>
+          )}
+        </View>
+        <TouchableOpacity
+          style={styles.verifyButton}
+          onPress={() => Linking.openURL("https://www.nremt.org/verify-credentials")}
+        >
+          <Text style={styles.verifyButtonText}>
+            Verify Credentials on NREMT.org
+          </Text>
+        </TouchableOpacity>
 
         <View style={styles.inputContainer}>
           <View style={styles.labelContainer}>
@@ -362,5 +452,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#007AFF",
     fontWeight: "600",
+  },
+  verifyButton: {
+    marginTop: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: "#007AFF20", 
+    alignItems: "center",
+  },
+  verifyButtonText: {
+    color: "#007AFF",
+    fontSize: 15,
+    fontWeight: "600",
+    textDecorationLine: "underline",
   },
 });
