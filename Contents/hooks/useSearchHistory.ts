@@ -8,7 +8,7 @@ export interface SearchHistoryItem {
   timestamp: string;
 }
 
-const STORAGE_KEY = "@medicationSearchHistory";
+// const STORAGE_KEY = "@medicationSearchHistory";
 
 export function useSearchHistory() {
   const [recentSearches, setRecentSearches] = useState<SearchHistoryItem[]>([]);
