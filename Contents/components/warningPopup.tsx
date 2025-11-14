@@ -33,7 +33,7 @@ export const WarningPopup: React.FC<WarningPopupProps> = ({ onClose }) => {
 
 const styles = StyleSheet.create({
   centeredView: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'transparent' },
-  modalView: { margin: 20, backgroundColor: 'rgba(200,200,200,0.2)', borderRadius: 20, padding: 30, 
+  modalView: { margin: 20, backgroundColor: 'rgba(235,235,235,.6)', borderRadius: 20, padding: 30,
     alignItems: 'center', borderWidth: 1, borderColor: 'rgba(0,0,0,1)' },
   text: { fontWeight: 'bold', fontSize: 18, color: '#333', textAlign: 'center', marginBottom: 25 },
   warningText: { fontSize: 24, color: '#b91c1c', fontWeight: 'bold', textAlign: 'center', marginBottom: 15 },

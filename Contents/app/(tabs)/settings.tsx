@@ -5,6 +5,7 @@ import { router } from "expo-router";
 import { Image, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { useEffect, useState } from 'react';// added for useState
 import { Picker } from '@react-native-picker/picker';
+import { WarningPopup } from '@/components/warningPopup.tsx';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
@@ -13,6 +14,7 @@ type CertificationLevel = 'EMT-B' | 'EMT-I' | 'AEMT' | 'Paramedic';
 
 export default function SettingsScreen() {
   const [isToggled, setIsToggled] = useState(false);
+  const [showWarning, setShowWarning] = useState(false);
 
   // const toggleFeature = (featureName: string, isEnabled: boolean) => {
   //   // console.log("toggleFeature called with", featureName, isEnabled);
@@ -33,6 +35,10 @@ export default function SettingsScreen() {
   //       console.log("Unknown feature");
   //   }
   // };
+
+  const handleCloseWarning = () => {
+    setShowWarning(false);
+  };
 
   const [certLevel, setCertLevel] = useState<CertificationLevel>('EMT-B');
   const [isLoading, setIsLoading] = useState(true);
@@ -83,27 +89,13 @@ export default function SettingsScreen() {
       <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">Account</ThemedText>
         <TouchableOpacity
-          style={[styles.logoutButton, { backgroundColor: "#007AFF" }]}
+          style={[styles.logoutButton]}
           onPress={() => router.replace("/login")}
         >
           <Text style={styles.logoutButtonText}>Log Out</Text>
         </TouchableOpacity>
       </ThemedView>
 
-       {/* Change Mode Section
-    <ThemedView style={styles.stepContainer}>
-      <ThemedText type="subtitle">Change Mode</ThemedText>
-      <View style={styles.switchStyle}>
-        <Text>{isToggled ? 'Paramedic' : 'EMT'}</Text>
-        <Switch
-          trackColor={{ false: '#767577', true: '#81b0ff' }}
-          thumbColor={isToggled ? '#f5dd4b' : '#f4f3f4'}
-          ios_backgroundColor="#3e3e3e"
-          onValueChange={setIsToggled}
-          value={isToggled}
-        />
-      </View>
-    </ThemedView> */}
 
     {/* Certification Level Section */}
     <ThemedView style={styles.stepContainer}>
@@ -130,9 +122,19 @@ export default function SettingsScreen() {
     <ThemedText style={styles.currentLevel}>
       Current Level: {certLevel}
     </ThemedText>
+
+    {/* Disclaimer Display Button */}
+    <TouchableOpacity
+      style={[styles.disclaimerButton]}
+      onPress={() => setShowWarning(true)}
+    >
+      <Text style={styles.disclaimerButtonText}>Display Disclaimer</Text>
+    </TouchableOpacity>
+
+    {showWarning && <WarningPopup onClose={handleCloseWarning} />}
   </ThemedView>
 
-        </ParallaxScrollView >
+    </ParallaxScrollView >
     );
 }
 
@@ -190,6 +192,7 @@ const styles = StyleSheet.create({
     color: '#007AFF',
   },
   logoutButton: {
+    backgroundColor: "#b33",
     padding: 16,
     borderRadius: 8,
     alignItems: "center",
@@ -197,6 +200,21 @@ const styles = StyleSheet.create({
   },
   logoutButtonText: {
     color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  disclaimerButton: {
+    backgroundColor: "rgba(0, 122, 255, 0.0)",
+    padding: 5,
+    borderRadius: 0,
+    alignItems: "left",
+    marginVertical: 4,
+    marginHorizontal: 5,
+    width: 144,
+    height: 30,
+  },
+  disclaimerButtonText: {
+    color: "rgba(0, 122, 255, 1.0)",
     fontSize: 16,
     fontWeight: "600",
   },
