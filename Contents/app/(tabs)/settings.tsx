@@ -16,25 +16,25 @@ export default function SettingsScreen() {
   const [isToggled, setIsToggled] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
 
-  const toggleFeature = (featureName: string, isEnabled: boolean) => {
-    // console.log("toggleFeature called with", featureName, isEnabled);
-    switch (featureName) {
-      case "EmployeeType":
-        if (isEnabled) {
-          console.log("Paramedic Mode Active");
-          // Activate Paramedic Mode
-          setIsToggled(true);
-        } else {
-          console.log("EMT Mode Active");
-          // Activate EMT Mode
-          setIsToggled(false);
-        }
-        break;
+  // const toggleFeature = (featureName: string, isEnabled: boolean) => {
+  //   // console.log("toggleFeature called with", featureName, isEnabled);
+  //   switch (featureName) {
+  //     case "EmployeeType":
+  //       if (isEnabled) {
+  //         console.log("Paramedic Mode Active");
+  //         // Activate Paramedic Mode
+  //         setIsToggled(true);
+  //       } else {
+  //         console.log("EMT Mode Active");
+  //         // Activate EMT Mode
+  //         setIsToggled(false);
+  //       }
+  //       break;
 
-      default:
-        console.log("Unknown feature");
-    }
-  };
+  //     default:
+  //       console.log("Unknown feature");
+  //   }
+  // };
 
   const handleCloseWarning = () => {
     setShowWarning(false);
@@ -95,6 +95,7 @@ export default function SettingsScreen() {
           <Text style={styles.logoutButtonText}>Log Out</Text>
         </TouchableOpacity>
       </ThemedView>
+
 
     {/* Certification Level Section */}
     <ThemedView style={styles.stepContainer}>

@@ -1,4 +1,5 @@
 import * as SQLite from "expo-sqlite";
+import { initializeHistory } from "./history";
 
 const db = SQLite.openDatabaseSync("medications.db");
 
@@ -37,6 +38,26 @@ export const initializeDB = async () => {
       createdAt TEXT NOT NULL
     );
   `);
+  const userCols = await db.getAllAsync(`PRAGMA table_info(users)`);
+
+  if (!userCols.some((c: any) => c.name === "certNumber")) {
+    await db.execAsync(`ALTER TABLE users ADD COLUMN certNumber TEXT`);
+  }
+  if (!userCols.some((c: any) => c.name === "certLevel")) {
+    await db.execAsync(`ALTER TABLE users ADD COLUMN certLevel INTEGER DEFAULT 1`)
+  }
+  await initializeHistory();
+  try {
+    const columns = await db.getAllAsync(`PRAGMA table_info(medications);`);
+    const hasMinCert = columns.some((c: any) => c.name === 'minCert');
+
+    if (!hasMinCert) {
+      await db.execAsync(`ALTER TABLE medications ADD COLUMN minCert INTEGER DEFAULT 1;`);
+      console.log("Added missing minCert column");
+    }
+  } catch (err) {
+    console.warn("Failed to alter medications table:", err);
+  }
   const result = await db.getFirstAsync(`PRAGMA foreign_keys`) as { foreign_keys: number } | null;
   console.log('Foreign keys enabled:', result?.foreign_keys);
 };
@@ -250,12 +271,14 @@ export const dosageExists = async (dosageId: number) => {
 export const createUser = async (
   name: string,
   certification: string,
-  password: string
+  password: string,
+  certNumber: string,
+  certLevel: number
 ) => {
   const result = await db.runAsync(
-    `INSERT INTO users (name, certification, password, createdAt)
-     VALUES (?, ?, ?, ?)`,
-    [name, certification, password, new Date().toISOString()]
+    `INSERT INTO users (name, certification, password, certNumber, certLevel, createdAt)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [name, certification, password, certNumber, certLevel, new Date().toISOString()]
   );
   return result;
 };
@@ -270,6 +293,8 @@ export const getUserByName = async (name: string) => {
     name: string;
     certification: string;
     password: string;
+    certNumber: string;
+    certLevel: number;
     createdAt: string;
   } | null;
 };
@@ -281,6 +306,8 @@ export const getAllUsers = async () => {
     name: string;
     certification: string;
     password: string;
+    certNumber: string;
+    certLevel: number;
     createdAt: string;
   }[];
 };
