@@ -277,17 +277,35 @@ export default function ScheduleScreen() {
       return acc;
     }, {} as Record<string, ScheduleItem[]>);
 
+    const today = new Date().toDateString();
+
     return Object.entries(grouped)
-      .map(([date, data]) => ({
-        title: new Date(date).toLocaleDateString('en-US', { 
+      .map(([date, data]) => {
+        const scheduleDate = new Date(date);
+        const isToday = date === today;
+
+        const title = isToday
+        ? `Today • ${scheduleDate.toLocaleDateString('en-US', { 
           weekday: 'long', 
           year: 'numeric', 
           month: 'long', 
           day: 'numeric' 
-        }),
+        })}`
+
+      : scheduleDate.toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          });
+
+      return {
+        title,
         data,
-        date: new Date(date)
-      }))
+        date: scheduleDate,
+        isToday
+      };
+    })
       .sort((a, b) => a.date.getTime() - b.date.getTime());
   };
 
@@ -447,6 +465,7 @@ export default function ScheduleScreen() {
             <View style={styles.section}>
               <Text style={[
                 styles.sectionTitle,
+                section.isToday ? styles.todaySectionTitle : {},
                 scheme === 'dark' ? styles.sectionTitleDark : styles.sectionTitleLight
               ]}>
                 {section.title} ({section.data.length})
@@ -722,4 +741,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  todaySectionTitle: {
+  color: '#3b82f6', 
+  fontWeight: '700', 
+},
 });
