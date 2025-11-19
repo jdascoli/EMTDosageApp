@@ -1,5 +1,6 @@
 import * as SQLite from "expo-sqlite";
 import { initializeHistory } from "./history";
+import { initializeSchedules } from "./schedule";
 
 const db = SQLite.openDatabaseSync("medications.db");
 
@@ -47,6 +48,7 @@ export const initializeDB = async () => {
     await db.execAsync(`ALTER TABLE users ADD COLUMN certLevel INTEGER DEFAULT 1`)
   }
   await initializeHistory();
+  await initializeSchedules();
   try {
     const columns = await db.getAllAsync(`PRAGMA table_info(medications);`);
     const hasMinCert = columns.some((c: any) => c.name === 'minCert');
