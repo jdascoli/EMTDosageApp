@@ -34,7 +34,6 @@ export default function ScheduleScreen() {
     loadUserSchedules();
   }, []);
 
-  // Real-time clock updates every second
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTime(new Date());
@@ -43,7 +42,6 @@ export default function ScheduleScreen() {
     return () => clearInterval(interval);
   }, []);
 
-  // Refresh when screen comes into focus
   useFocusEffect(
     useCallback(() => {
       console.log('Screen focused - refreshing schedules');
@@ -51,7 +49,6 @@ export default function ScheduleScreen() {
     }, [])
   );
 
-  // FIXED: Smart status updates with minute-range time comparison
   useEffect(() => {
     const updateScheduleStatuses = () => {
       setSchedules(prevSchedules => {
@@ -62,15 +59,13 @@ export default function ScheduleScreen() {
           const [hours, minutes] = schedule.schedule_time.split(':').map(Number);
           const scheduledStart = new Date(scheduleDate);
           scheduledStart.setHours(hours, minutes, 0, 0);
-          const scheduledEnd = new Date(scheduledStart.getTime() + 59_999); // end of that minute
+          const scheduledEnd = new Date(scheduledStart.getTime() + 59_999);
 
-          // Determine status using minute-range logic
           let correctStatus: 'scheduled' | 'missed' = 'scheduled';
 
           if (currentTime.getTime() > scheduledEnd.getTime()) {
             correctStatus = 'missed';
           } else {
-            // still within or before the scheduled minute -> keep as scheduled (we'll display "Due Now" separately)
             correctStatus = 'scheduled';
           }
 
@@ -86,16 +81,13 @@ export default function ScheduleScreen() {
       });
     };
 
-    // Update immediately when component mounts or currentTime changes
     updateScheduleStatuses();
 
-    // Set up interval for continuous updates
-    const interval = setInterval(updateScheduleStatuses, 1000); // Check every second for exact timing
+    const interval = setInterval(updateScheduleStatuses, 1000); 
 
     return () => clearInterval(interval);
   }, [currentTime]);
 
-  // Update the ref when schedules change
   useEffect(() => {
     schedulesRef.current = schedules;
   }, [schedules]);
@@ -114,7 +106,6 @@ export default function ScheduleScreen() {
 
       const userSchedules = await getUserSchedules(currentUserId);
       
-      // FIXED: Process schedules with minute-range time comparison on load
       const processedSchedules = (userSchedules as ScheduleItem[]).map(schedule => {
         if (schedule.current_status === 'taken') return schedule;
 
@@ -147,14 +138,11 @@ export default function ScheduleScreen() {
     loadUserSchedules();
   };
 
-// FIXED: handleToggleTaken function with proper database persistence
 const handleToggleTaken = async (scheduleId: number, medicationName: string, currentStatus: 'scheduled' | 'taken' | 'missed') => {
   try {
     if (currentStatus === 'taken') {
-      // If already taken, undo it
       await undoMarkAsTaken(scheduleId);
       
-      // Update local state only - no reload
       setSchedules(prev => prev.map(schedule => {
         if (schedule.id === scheduleId) {
           const scheduleDate = new Date(schedule.start_date);
@@ -175,10 +163,8 @@ const handleToggleTaken = async (scheduleId: number, medicationName: string, cur
       
       Alert.alert('Status Updated', `${medicationName} has been marked as not taken.`);
     } else {
-      // If scheduled or missed, mark as taken
       await markScheduleAsTaken(scheduleId, `Taken on ${new Date().toLocaleString()}`);
       
-      // Update local state only - no reload
       setSchedules(prev => prev.map(schedule => 
         schedule.id === scheduleId 
           ? { ...schedule, current_status: 'taken', last_taken: new Date().toISOString() }
@@ -188,7 +174,6 @@ const handleToggleTaken = async (scheduleId: number, medicationName: string, cur
       const action = currentStatus === 'missed' ? 'marked as taken (was missed)' : 'marked as taken';
       Alert.alert('Medication Recorded', `${medicationName} has been ${action}.`);
     }
-    // REMOVED: The setTimeout reload that causes blinking
   } catch (error) {
     console.error('Error toggling taken status:', error);
     Alert.alert('Error', 'Failed to update medication status');
@@ -196,22 +181,17 @@ const handleToggleTaken = async (scheduleId: number, medicationName: string, cur
 };
 
 
-// UPDATED: Handle backdrop tap to save and close modal
 const handleTimeSave = async () => {
   setShowTimeModal(false);
   setEditingScheduleId(null);
-  // REMOVED: The setTimeout reload that causes blinking
 };
-// NEW: Handle time change with immediate database save
 const handleTimeChange = async (selectedDate?: Date) => {
   if (selectedDate && editingScheduleId) {
     const isoTime = selectedDate.toISOString();
     
     try {
-      // Immediately save to database
       await updateTakenTime(editingScheduleId, isoTime);
       
-      // Update local state only - no reload
       setSchedules(prev => prev.map(schedule => 
         schedule.id === editingScheduleId 
           ? { ...schedule, last_taken: isoTime }
@@ -241,7 +221,6 @@ const handleTimeChange = async (selectedDate?: Date) => {
             try {
               await deactivateSchedule(scheduleId);
               
-              // Remove from local state
               setSchedules(prev => prev.filter(schedule => schedule.id !== scheduleId));
               
               Alert.alert('Deleted', `${medicationName} schedule has been deleted.`);
@@ -255,9 +234,7 @@ const handleTimeChange = async (selectedDate?: Date) => {
     );
   };
 
-  // ADD THIS FUNCTION - NEW CODE
 const handleEditSchedule = (schedule: ScheduleItem) => {
-  // Navigate to edit screen with schedule data
   router.push({
     pathname: '/(tabs)/add_schedule',
     params: { 
@@ -280,7 +257,6 @@ const handleEditSchedule = (schedule: ScheduleItem) => {
     return `${displayHour}:${minutes} ${period}`;
   };
 
-  // FIXED: Helper function to check if current time is within the scheduled minute
   const isDueNow = (scheduleTime?: string, startDate?: string) => {
     if (!scheduleTime || !startDate) return false;
     const scheduleDate = new Date(startDate);
@@ -293,19 +269,17 @@ const handleEditSchedule = (schedule: ScheduleItem) => {
     return now.getTime() >= scheduledStart.getTime() && now.getTime() <= scheduledEnd.getTime();
   };
 
-  // FIXED: Updated getStatusColor with minute-range logic
-  const getStatusColor = (status: string, scheduleTime?: string, startDate?: string) => {
+   const getStatusColor = (status: string, scheduleTime?: string, startDate?: string) => {
     switch (status) {
       case 'taken': return '#10b981'; 
       case 'missed': return '#ef4444'; 
       case 'scheduled': 
-        if (isDueNow(scheduleTime, startDate)) return '#f59e0b'; // Due Now
-        return '#3b82f6'; // Upcoming
+        if (isDueNow(scheduleTime, startDate)) return '#f59e0b'; 
+        return '#3b82f6'; 
       default: return '#3b82f6';
     }
   };
 
-  // FIXED: Updated getStatusText with minute-range logic
   const getStatusText = (status: string, scheduleTime?: string, startDate?: string) => {
     switch (status) {
       case 'taken': return 'Taken';
@@ -412,7 +386,6 @@ const handleEditSchedule = (schedule: ScheduleItem) => {
         )}
         </View>
       <View style={styles.actionsContainer}>
-  {/* Taken/Mark Taken Button - Left Side */}
   <View style={styles.statusActions}>
     {(item.current_status === 'scheduled' || item.current_status === 'missed' || item.current_status === 'taken') && (
       <TouchableOpacity 
@@ -436,8 +409,6 @@ const handleEditSchedule = (schedule: ScheduleItem) => {
       </TouchableOpacity>
     )}
   </View>
-
-  {/* Edit and Delete Buttons - Right Side */}
   <View style={styles.rightActions}>
     <TouchableOpacity 
       style={styles.editButton}
@@ -486,7 +457,6 @@ const handleEditSchedule = (schedule: ScheduleItem) => {
         Today • {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
       </ThemedText>
 
-      {/* the Add Schedule button */}
       <View style={styles.addButtonContainer}>
         <TouchableOpacity 
           style={styles.addScheduleButton}
@@ -497,7 +467,6 @@ const handleEditSchedule = (schedule: ScheduleItem) => {
         </TouchableOpacity>
       </View>
 
-      {/* Summary Stats */}
       {schedules.length > 0 && (
         <View style={styles.statsContainer}>
           <View style={styles.statItem}>
@@ -519,7 +488,6 @@ const handleEditSchedule = (schedule: ScheduleItem) => {
         </View>
       )}
 
-      {/* Show schedules if they exist, otherwise show empty state */}
       {schedules.length === 0 ? (
         <View style={styles.emptyState}>
           <Ionicons name="medical-outline" size={64} color="#6b7280" />

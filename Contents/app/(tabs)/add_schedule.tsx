@@ -70,7 +70,6 @@ export default function AddScheduleScreen() {
   useEffect(() => {
     if (!selectedMedication) return;
 
-  // Reset auto-select guard so new medication can auto-select dosage in ADD mode
   hasSetDosageFromEdit.current = false;
 
   loadDosages(selectedMedication.name);
@@ -84,28 +83,23 @@ useEffect(() => {
 }, [isEditMode]);
 const initRef = useRef<string | boolean>(false);
 
-// FIXED: Run only when specific params that determine mode change
 useEffect(() => {
   const init = async () => {
     const editMode = params?.editMode === 'true';
     const scheduleId = params?.scheduleId;
     
-    // Create a unique key for current mode
     const currentModeKey = `${editMode}-${scheduleId}`;
     
-    // Skip if we've already initialized with these exact params
     if (initRef.current === currentModeKey) return;
     
     initRef.current = currentModeKey;
     console.log('Initializing mode:', editMode ? 'EDIT' : 'ADD', 'scheduleId:', scheduleId);
     
     if (editMode && scheduleId) {
-      // EDIT mode — populate from params
       console.log('Initializing EDIT mode with schedule ID:', scheduleId);
       setIsEditMode(true);
       setEditingScheduleId(parseInt(scheduleId as string, 10));
 
-      // Reset form fields for edit mode
       setSelectedMedication(null);
       setSelectedDosage('');
       setCustomDosage('');
@@ -131,7 +125,6 @@ useEffect(() => {
       if (params.frequency) setFrequency(params.frequency as string);
       if (params.startDate) setStartDate(new Date(params.startDate as string));
       
-      // Clear any draft data for edit mode
       try { 
         await AsyncStorage.removeItem('@schedule_draft'); 
       } catch (e) { 
@@ -139,7 +132,6 @@ useEffect(() => {
       }
       
     } else {
-      // ADD mode — try to restore a draft if available
       console.log('Initializing ADD mode — attempting to load draft');
       setIsEditMode(false);
       setEditingScheduleId(null);
@@ -156,7 +148,6 @@ useEffect(() => {
           if (draft.startDate) setStartDate(new Date(draft.startDate));
           if (draft.endDate) setEndDate(draft.endDate ? new Date(draft.endDate) : null);
         } else {
-          // If no draft, reset form for fresh add
           setSelectedMedication(null);
           setSelectedDosage('');
           setCustomDosage('');
@@ -180,12 +171,9 @@ useEffect(() => {
   params?.scheduleTime,
   params?.frequency,
   params?.startDate
-]); // ← FIXED: Include all used params // ← FIXED: Only specific params that matter
-
-
-// Persist a small draft for ADD-mode so user sees what they typed when they return
+]); 
 useEffect(() => {
-  if (isEditMode) return; // only save drafts in ADD mode
+  if (isEditMode) return; 
 
   const save = async () => {
     try {
@@ -227,15 +215,11 @@ useEffect(() => {
     }
   };
 
-  // Prevent accidental overwrites during edit initialization by tracking whether
-// we've already auto-selected a dosage for the current medication.
 const loadDosages = async (medName: string) => {
   try {
     const dosageData = await getDosagesByMedication(medName);
     setDosages(dosageData);
 
-    // Only auto-select dosage when: we are in ADD mode AND we haven't auto-selected yet
-    // This avoids flipping selectedDosage during edit initialization.
     if (dosageData.length > 0 && !isEditModeRef.current && !hasSetDosageFromEdit.current) {
       const standardDosage = dosageData.find(d => d.usage === 'Standard') || dosageData[0];
       let autoText = '';
@@ -253,9 +237,6 @@ const loadDosages = async (medName: string) => {
     console.error('Error loading dosages:', error);
   }
 };
-
-
-  // REPLACE LINES 112-150 with this:
 
 const handleAddSchedule = async () => {
   if (!selectedMedication) {
@@ -284,7 +265,6 @@ const handleAddSchedule = async () => {
     const hhmm = `${hh}:${mm}`;
 
     if (isEditMode && editingScheduleId) {
-      // UPDATE existing schedule
       await updateMedicationSchedule(
         editingScheduleId,
         selectedMedication.name,
@@ -302,13 +282,12 @@ const handleAddSchedule = async () => {
         }
       ]);
     } else {
-      // CREATE new schedule
       await addMedicationSchedule(
         userId,
         selectedMedication.name,
         selectedMedication.name,
         finalDosage,
-        scheduleTime.toTimeString().split(' ')[0].slice(0, 5), // HH:MM format
+        scheduleTime.toTimeString().split(' ')[0].slice(0, 5),
         frequency,
         startDate.toISOString(),
         endDate ? endDate.toISOString() : undefined
@@ -318,7 +297,7 @@ const handleAddSchedule = async () => {
       Alert.alert('Success', 'Medication schedule added successfully!', [
         { 
           text: 'OK', 
-          onPress: () => router.replace('/(tabs)/schedule') // Go back to schedule screen
+          onPress: () => router.replace('/(tabs)/schedule') 
         }
       ]);
     }
@@ -341,37 +320,31 @@ const handleAddSchedule = async () => {
     });
   };
 
-  // Time Picker Handler
   const onTimeChange = (event: any, selectedTime?: Date) => {
     if (selectedTime) {
       setScheduleTime(selectedTime);
     }
     
-    // On Android, close the picker when a time is selected
     if (Platform.OS === 'android') {
       setShowTimePicker(false);
     }
   };
 
-  // Date Picker Handler
   const onStartDateChange = (event: any, selectedDate?: Date) => {
     if (selectedDate) {
       setStartDate(selectedDate);
     }
     
-    // On Android, close the picker when a date is selected
     if (Platform.OS === 'android') {
       setShowStartDatePicker(false);
     }
   };
 
-  // End Date Picker Handler
   const onEndDateChange = (event: any, selectedDate?: Date) => {
     if (selectedDate) {
       setEndDate(selectedDate);
     }
     
-    // On Android, close the picker when a date is selected
     if (Platform.OS === 'android') {
       setShowEndDatePicker(false);
     }
@@ -391,7 +364,6 @@ const handleAddSchedule = async () => {
     { label: 'Monthly', value: 'monthly' }
   ];
 
-  // Render Picker Modal for iOS
   const renderPickerModal = (visible: boolean, onClose: () => void, children: React.ReactNode) => (
     <Modal
       visible={visible}
@@ -413,7 +385,6 @@ const handleAddSchedule = async () => {
 
   return (
     <ThemedView style={styles.container}>
-      {/* Fixed Header - Single Line */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.push('/(tabs)/schedule')} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={scheme === 'dark' ? '#f7fafc' : '#2d3748'} />
@@ -424,7 +395,6 @@ const handleAddSchedule = async () => {
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Medication Selection */}
         <View style={styles.section}>
           <Text style={[
             styles.label,
@@ -449,8 +419,6 @@ const handleAddSchedule = async () => {
             <Ionicons name="chevron-down" size={20} color="#6b7280" />
           </TouchableOpacity>
         </View>
-
-        {/* Dosage Selection */}
         {selectedMedication && (
           <View style={styles.section}>
             <Text style={[
@@ -503,8 +471,6 @@ const handleAddSchedule = async () => {
             )}
           </View>
         )}
-
-        {/* Time Selection */}
         <View style={styles.section}>
           <Text style={[
             styles.label,
@@ -527,8 +493,6 @@ const handleAddSchedule = async () => {
             </Text>
             <Ionicons name="time-outline" size={20} color="#6b7280" />
           </TouchableOpacity>
-          
-          {/* Time Picker Modal for iOS */}
           {Platform.OS === 'ios' && renderPickerModal(
             showTimePicker,
             () => setShowTimePicker(false),
@@ -540,8 +504,6 @@ const handleAddSchedule = async () => {
               style={styles.picker}
             />
           )}
-          
-          {/* Android Time Picker */}
           {Platform.OS === 'android' && showTimePicker && (
             <DateTimePicker
               value={scheduleTime}
@@ -551,8 +513,6 @@ const handleAddSchedule = async () => {
             />
           )}
         </View>
-
-        {/* Frequency Selection */}
         <View style={styles.section}>
           <Text style={[
             styles.label,
@@ -587,7 +547,6 @@ const handleAddSchedule = async () => {
           </View>
         </View>
 
-        {/* Start Date */}
         <View style={styles.section}>
           <Text style={[
             styles.label,
@@ -611,7 +570,6 @@ const handleAddSchedule = async () => {
             <Ionicons name="calendar-outline" size={20} color="#6b7280" />
           </TouchableOpacity>
           
-          {/* Start Date Picker Modal for iOS */}
           {Platform.OS === 'ios' && renderPickerModal(
             showStartDatePicker,
             () => setShowStartDatePicker(false),
@@ -623,8 +581,6 @@ const handleAddSchedule = async () => {
               style={styles.picker}
             />
           )}
-          
-          {/* Android Start Date Picker */}
           {Platform.OS === 'android' && showStartDatePicker && (
             <DateTimePicker
               value={startDate}
@@ -635,7 +591,6 @@ const handleAddSchedule = async () => {
           )}
         </View>
 
-        {/* End Date (Optional) */}
         <View style={styles.section}>
           <View style={styles.endDateHeader}>
             <Text style={[
@@ -667,7 +622,6 @@ const handleAddSchedule = async () => {
             <Ionicons name="calendar-outline" size={20} color="#6b7280" />
           </TouchableOpacity>
           
-          {/* End Date Picker Modal for iOS */}
           {Platform.OS === 'ios' && renderPickerModal(
             showEndDatePicker,
             () => setShowEndDatePicker(false),
@@ -680,7 +634,6 @@ const handleAddSchedule = async () => {
             />
           )}
           
-          {/* Android End Date Picker */}
           {Platform.OS === 'android' && showEndDatePicker && (
             <DateTimePicker
               value={endDate || new Date()}
@@ -691,7 +644,6 @@ const handleAddSchedule = async () => {
           )}
         </View>
 
-        {/* Add Button */}
         <TouchableOpacity
           style={[styles.addButton, loading && styles.addButtonDisabled]}
           onPress={handleAddSchedule}
@@ -710,7 +662,6 @@ const handleAddSchedule = async () => {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Medication Selection Modal */}
       <Modal
         visible={showMedicationModal}
         animationType="slide"
@@ -932,7 +883,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#2d3748',
   },
-  // New styles for centered picker modals
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -973,6 +923,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   requiredStar: {
-  color: '#ef4444', // red color
+  color: '#ef4444', 
 },
 });

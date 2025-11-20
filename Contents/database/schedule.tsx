@@ -19,7 +19,6 @@ interface ScheduleWithStatus extends Schedule {
   current_status: 'scheduled' | 'taken' | 'missed';
 }
 
-/* Create medication schedules table */
 export const initializeSchedules = async (): Promise<void> => {
   await db.execAsync(`PRAGMA foreign_keys = ON;`);
   
@@ -41,7 +40,6 @@ export const initializeSchedules = async (): Promise<void> => {
     );
   `);
 
-  /* Create schedule history table */
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS schedule_history (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -54,7 +52,6 @@ export const initializeSchedules = async (): Promise<void> => {
   `);
 };
 
-/* Add medication schedule function */
 export const addMedicationSchedule = async (
   userId: number,
   medicationId: string,
@@ -75,7 +72,6 @@ export const addMedicationSchedule = async (
 };
 
 export const getUserSchedules = async (userId: number): Promise<ScheduleWithStatus[]> => {
-  // Get ALL active schedules for the user (including future dates)
   const schedules: Schedule[] = await db.getAllAsync<Schedule>(
     `SELECT ms.*, sh.taken_at as last_taken
      FROM medication_schedules ms
@@ -91,25 +87,20 @@ export const getUserSchedules = async (userId: number): Promise<ScheduleWithStat
     [userId]
   );
 
-  // Calculate status
   const now: Date = new Date();
   
   const schedulesWithStatus: ScheduleWithStatus[] = schedules.map((schedule: Schedule): ScheduleWithStatus => {
-    // If taken, always show as taken
     if (schedule.last_taken) {
       return { 
         ...schedule, 
         current_status: 'taken' as const 
       };
     }
-    
-    // Create the full scheduled datetime
     const scheduleDate: Date = new Date(schedule.start_date);
     const [hours, minutes]: number[] = schedule.schedule_time.split(':').map(Number);
     const scheduledDateTime: Date = new Date(scheduleDate);
     scheduledDateTime.setHours(hours, minutes, 0, 0);
 
-    // For future dates, always show as "scheduled"
     if (now < scheduledDateTime) {
       return { 
         ...schedule, 
@@ -117,7 +108,7 @@ export const getUserSchedules = async (userId: number): Promise<ScheduleWithStat
       };
     }
 
-    const bufferTime = 1 * 60 * 1000; // 1 minute in milliseconds
+    const bufferTime = 1 * 60 * 1000;
     const missedThreshold = new Date(scheduledDateTime.getTime() + bufferTime);
 
     if (now > missedThreshold) {
@@ -149,7 +140,6 @@ export const getUserSchedules = async (userId: number): Promise<ScheduleWithStat
   return schedulesWithStatus;
 };
 
-/* Mark schedule as taken */
 export const markScheduleAsTaken = async (scheduleId: number, notes?: string): Promise<any> => {
   const result = await db.runAsync(
     `INSERT INTO schedule_history (scheduleId, taken_at, status, notes)
@@ -159,7 +149,6 @@ export const markScheduleAsTaken = async (scheduleId: number, notes?: string): P
   return result;
 };
 
-/* Update schedule status */
 export const updateScheduleStatus = async (scheduleId: number, status: 'missed' | 'skipped'): Promise<any> => {
   const result = await db.runAsync(
     `INSERT INTO schedule_history (scheduleId, taken_at, status)
@@ -169,7 +158,7 @@ export const updateScheduleStatus = async (scheduleId: number, status: 'missed' 
   return result;
 };
 
-/* Deactivate schedule */
+
 export const deactivateSchedule = async (scheduleId: number): Promise<any> => {
   const result = await db.runAsync(
     `UPDATE medication_schedules SET is_active = 0 WHERE id = ?`,
@@ -178,7 +167,6 @@ export const deactivateSchedule = async (scheduleId: number): Promise<any> => {
   return result;
 };
 
-/* Get user schedules by specific date */
 export const getUserSchedulesByDate = async (userId: number, date: string): Promise<any[]> => {
   const result = await db.getAllAsync(
     `SELECT ms.*, 
@@ -202,7 +190,6 @@ export const getUserSchedulesByDate = async (userId: number, date: string): Prom
   return result;
 };
 
-/* Get schedule by ID */
 export const getScheduleById = async (scheduleId: number): Promise<any> => {
   const result = await db.getFirstAsync(
     `SELECT * FROM medication_schedules WHERE id = ?`,
@@ -211,7 +198,6 @@ export const getScheduleById = async (scheduleId: number): Promise<any> => {
   return result;
 };
 
-/* Get schedule history */
 export const getScheduleHistory = async (scheduleId: number, days: number = 30): Promise<any[]> => {
   const result = await db.getAllAsync(
     `SELECT * FROM schedule_history 
@@ -222,7 +208,6 @@ export const getScheduleHistory = async (scheduleId: number, days: number = 30):
   return result;
 };
 
-/* Undo taken status by removing the most recent taken entry */
 export const undoMarkAsTaken = async (scheduleId: number): Promise<any> => {
   const result = await db.runAsync(
     `DELETE FROM schedule_history 
@@ -236,9 +221,7 @@ export const undoMarkAsTaken = async (scheduleId: number): Promise<any> => {
   return result;
 };
 
-/* Update taken time for a schedule */
 export const updateTakenTime = async (scheduleId: number, newTakenTime: string): Promise<any> => {
-  // First delete the existing taken entry
   await db.runAsync(
     `DELETE FROM schedule_history 
      WHERE scheduleId = ? AND status = 'taken'
@@ -248,8 +231,7 @@ export const updateTakenTime = async (scheduleId: number, newTakenTime: string):
      )`,
     [scheduleId, scheduleId]
   );
-  
-  // Then insert with new time
+
   const result = await db.runAsync(
     `INSERT INTO schedule_history (scheduleId, taken_at, status, notes)
      VALUES (?, ?, 'taken', ?)`,
@@ -257,7 +239,6 @@ export const updateTakenTime = async (scheduleId: number, newTakenTime: string):
   );
   return result;
 };
-/* Update medication schedule */
 export const updateMedicationSchedule = async (
   scheduleId: number,
   medicationName: string,
