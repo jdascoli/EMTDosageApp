@@ -74,9 +74,8 @@ export const addMedicationSchedule = async (
   return result;
 };
 
-/* Get user schedules */
 export const getUserSchedules = async (userId: number): Promise<ScheduleWithStatus[]> => {
-  // Get raw schedule data 
+  // Get ALL active schedules for the user (including future dates)
   const schedules: Schedule[] = await db.getAllAsync<Schedule>(
     `SELECT ms.*, sh.taken_at as last_taken
      FROM medication_schedules ms
@@ -87,7 +86,6 @@ export const getUserSchedules = async (userId: number): Promise<ScheduleWithStat
        GROUP BY scheduleId
      ) sh ON ms.id = sh.scheduleId
      WHERE ms.userId = ? AND ms.is_active = 1
-       AND date(ms.start_date) <= date('now')
        AND (ms.end_date IS NULL OR date('now') <= date(ms.end_date))
      ORDER BY ms.start_date, ms.schedule_time`,
     [userId]
@@ -106,20 +104,28 @@ export const getUserSchedules = async (userId: number): Promise<ScheduleWithStat
     }
     
     // Create the full scheduled datetime
-  const scheduleDate: Date = new Date(schedule.start_date);
-  const [hours, minutes]: number[] = schedule.schedule_time.split(':').map(Number);
-  const scheduledDateTime: Date = new Date(scheduleDate);
-  scheduledDateTime.setHours(hours, minutes, 0, 0);
+    const scheduleDate: Date = new Date(schedule.start_date);
+    const [hours, minutes]: number[] = schedule.schedule_time.split(':').map(Number);
+    const scheduledDateTime: Date = new Date(scheduleDate);
+    scheduledDateTime.setHours(hours, minutes, 0, 0);
 
-  const bufferTime = 1 * 60 * 1000; // 1 minute in milliseconds
-  const missedThreshold = new Date(scheduledDateTime.getTime() + bufferTime);
+    // For future dates, always show as "scheduled"
+    if (now < scheduledDateTime) {
+      return { 
+        ...schedule, 
+        current_status: 'scheduled' as const 
+      };
+    }
+
+    const bufferTime = 1 * 60 * 1000; // 1 minute in milliseconds
+    const missedThreshold = new Date(scheduledDateTime.getTime() + bufferTime);
 
     if (now > missedThreshold) {
-    return { 
-    ...schedule, 
-    current_status: 'missed' as const 
-    };
-   } 
+      return { 
+        ...schedule, 
+        current_status: 'missed' as const 
+      };
+    } 
     
     return { 
       ...schedule, 
@@ -129,12 +135,12 @@ export const getUserSchedules = async (userId: number): Promise<ScheduleWithStat
 
   console.log('DEBUG SCHEDULES:', {
     currentTime: now.toISOString(),
+    totalSchedules: schedulesWithStatus.length,
     schedules: schedulesWithStatus.map((s: ScheduleWithStatus) => ({
       id: s.id,
       name: s.medicationName,
       scheduledDate: s.start_date,
       scheduledTime: s.schedule_time,
-      scheduledDateTime: new Date(s.start_date).toISOString().split('T')[0] + ' ' + s.schedule_time,
       status: s.current_status,
       last_taken: s.last_taken
     }))
@@ -226,6 +232,46 @@ export const undoMarkAsTaken = async (scheduleId: number): Promise<any> => {
        WHERE scheduleId = ? AND status = 'taken'
      )`,
     [scheduleId, scheduleId]
+  );
+  return result;
+};
+
+/* Update taken time for a schedule */
+export const updateTakenTime = async (scheduleId: number, newTakenTime: string): Promise<any> => {
+  // First delete the existing taken entry
+  await db.runAsync(
+    `DELETE FROM schedule_history 
+     WHERE scheduleId = ? AND status = 'taken'
+     AND taken_at = (
+       SELECT MAX(taken_at) FROM schedule_history 
+       WHERE scheduleId = ? AND status = 'taken'
+     )`,
+    [scheduleId, scheduleId]
+  );
+  
+  // Then insert with new time
+  const result = await db.runAsync(
+    `INSERT INTO schedule_history (scheduleId, taken_at, status, notes)
+     VALUES (?, ?, 'taken', ?)`,
+    [scheduleId, newTakenTime, `Taken on ${new Date(newTakenTime).toLocaleString()}`]
+  );
+  return result;
+};
+/* Update medication schedule */
+export const updateMedicationSchedule = async (
+  scheduleId: number,
+  medicationName: string,
+  dosage: string,
+  scheduleTime: string,
+  frequency: string,
+  startDate: string,
+  endDate?: string
+): Promise<any> => {
+  const result = await db.runAsync(
+    `UPDATE medication_schedules 
+     SET medicationName = ?, dosage = ?, schedule_time = ?, frequency = ?, start_date = ?, end_date = ?
+     WHERE id = ?`,
+    [medicationName, dosage, scheduleTime, frequency, startDate, endDate || null, scheduleId]
   );
   return result;
 };

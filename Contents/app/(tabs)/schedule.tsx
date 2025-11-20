@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, useColorScheme, ActivityIndicator, } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, useColorScheme, ActivityIndicator, Modal } from 'react-native';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { Ionicons } from '@expo/vector-icons';
-import { getUserSchedules, markScheduleAsTaken, deactivateSchedule, undoMarkAsTaken } from '@/database/schedule';
+import { getUserSchedules, markScheduleAsTaken, deactivateSchedule, undoMarkAsTaken, updateTakenTime } from '@/database/schedule';
 import { getCurrentUserId } from '@/lib/session';
 import { router, useFocusEffect } from 'expo-router';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 interface ScheduleItem {
   id: number;
@@ -24,6 +25,8 @@ export default function ScheduleScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [showTimeModal, setShowTimeModal] = useState(false);
+  const [editingScheduleId, setEditingScheduleId] = useState<number | null>(null);
   const scheme = useColorScheme();
   const schedulesRef = useRef<ScheduleItem[]>([]);
 
@@ -144,29 +147,14 @@ export default function ScheduleScreen() {
     loadUserSchedules();
   };
 
-  const handleMarkAsTaken = async (scheduleId: number, medicationName: string) => {
-    try {
-      await markScheduleAsTaken(scheduleId, `Taken on ${new Date().toLocaleString()}`);
-      
-      // Update local state
-      setSchedules(prev => prev.map(schedule => 
-        schedule.id === scheduleId 
-          ? { ...schedule, current_status: 'taken', last_taken: new Date().toISOString() }
-          : schedule
-      ));
-      
-      Alert.alert('Medication Recorded', `${medicationName} has been marked as taken.`);
-    } catch (error) {
-      console.error('Error marking as taken:', error);
-      Alert.alert('Error', 'Failed to update medication status');
-    }
-  };
-
-  const handleUndoTaken = async (scheduleId: number, medicationName: string) => {
-    try {
+// FIXED: handleToggleTaken function with proper database persistence
+const handleToggleTaken = async (scheduleId: number, medicationName: string, currentStatus: 'scheduled' | 'taken' | 'missed') => {
+  try {
+    if (currentStatus === 'taken') {
+      // If already taken, undo it
       await undoMarkAsTaken(scheduleId);
       
-      // FIXED: Proper status recalculation when undoing with minute-range logic
+      // Update local state only - no reload
       setSchedules(prev => prev.map(schedule => {
         if (schedule.id === scheduleId) {
           const scheduleDate = new Date(schedule.start_date);
@@ -185,13 +173,58 @@ export default function ScheduleScreen() {
         return schedule;
       }));
       
-      Alert.alert('Status Updated', `${medicationName} has been marked as scheduled again.`);
-    } catch (error) {
-      console.error('Error undoing taken status:', error);
-      Alert.alert('Error', 'Failed to update medication status');
+      Alert.alert('Status Updated', `${medicationName} has been marked as not taken.`);
+    } else {
+      // If scheduled or missed, mark as taken
+      await markScheduleAsTaken(scheduleId, `Taken on ${new Date().toLocaleString()}`);
+      
+      // Update local state only - no reload
+      setSchedules(prev => prev.map(schedule => 
+        schedule.id === scheduleId 
+          ? { ...schedule, current_status: 'taken', last_taken: new Date().toISOString() }
+          : schedule
+      ));
+      
+      const action = currentStatus === 'missed' ? 'marked as taken (was missed)' : 'marked as taken';
+      Alert.alert('Medication Recorded', `${medicationName} has been ${action}.`);
     }
-  };
+    // REMOVED: The setTimeout reload that causes blinking
+  } catch (error) {
+    console.error('Error toggling taken status:', error);
+    Alert.alert('Error', 'Failed to update medication status');
+  }
+};
 
+
+// UPDATED: Handle backdrop tap to save and close modal
+const handleTimeSave = async () => {
+  setShowTimeModal(false);
+  setEditingScheduleId(null);
+  // REMOVED: The setTimeout reload that causes blinking
+};
+// NEW: Handle time change with immediate database save
+const handleTimeChange = async (selectedDate?: Date) => {
+  if (selectedDate && editingScheduleId) {
+    const isoTime = selectedDate.toISOString();
+    
+    try {
+      // Immediately save to database
+      await updateTakenTime(editingScheduleId, isoTime);
+      
+      // Update local state only - no reload
+      setSchedules(prev => prev.map(schedule => 
+        schedule.id === editingScheduleId 
+          ? { ...schedule, last_taken: isoTime }
+          : schedule
+      ));
+      
+      console.log('Time updated successfully:', isoTime);
+    } catch (error) {
+      console.error('Error updating time:', error);
+      Alert.alert('Error', 'Failed to update taken time');
+    }
+  }
+};
   const handleDeleteSchedule = async (scheduleId: number, medicationName: string) => {
     Alert.alert(
       'Delete Medication Schedule',
@@ -221,6 +254,23 @@ export default function ScheduleScreen() {
       ]
     );
   };
+
+  // ADD THIS FUNCTION - NEW CODE
+const handleEditSchedule = (schedule: ScheduleItem) => {
+  // Navigate to edit screen with schedule data
+  router.push({
+    pathname: '/(tabs)/add_schedule',
+    params: { 
+      editMode: 'true',
+      scheduleId: schedule.id.toString(),
+      medicationName: schedule.medicationName,
+      dosage: schedule.dosage,
+      scheduleTime: schedule.schedule_time,
+      frequency: schedule.frequency,
+      startDate: schedule.start_date
+    }
+  });
+};
 
   const formatTimeForDisplay = (time24: string) => {
     const [hours, minutes] = time24.split(':');
@@ -264,6 +314,15 @@ export default function ScheduleScreen() {
         if (isDueNow(scheduleTime, startDate)) return 'Due Now';
         return 'Upcoming';
       default: return 'Upcoming';
+    }
+  };
+
+  const getButtonText = (status: string) => {
+    switch (status) {
+      case 'taken': return 'Taken';
+      case 'missed': return 'Missed';
+      case 'scheduled': return 'Mark Taken';
+      default: return 'Mark Taken';
     }
   };
 
@@ -336,49 +395,66 @@ export default function ScheduleScreen() {
         <Text style={styles.dosageText}>{item.dosage}</Text>
         <Text style={styles.frequencyText}>{item.frequency.charAt(0).toUpperCase() + item.frequency.slice(1)}</Text>
         {item.last_taken && (
+          <View style={styles.takenTimeContainer}>
           <Text style={styles.lastTakenText}>
             Taken at {new Date(item.last_taken).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </Text>
-        )}
+          <TouchableOpacity
+          style={styles.editTimeButton}
+        onPress={() => {
+          setEditingScheduleId(item.id);
+          setShowTimeModal(true);
+        }}
+      >
+        <Ionicons name="create-outline" size={12} color="#6b7280" />
+      </TouchableOpacity>
       </View>
-      
+        )}
+        </View>
       <View style={styles.actionsContainer}>
-        {item.current_status === 'scheduled' && (
-          <TouchableOpacity 
-            style={styles.takenButton}
-            onPress={() => handleMarkAsTaken(item.id, item.medicationName)}
-          >
-            <Ionicons name="checkmark-circle-outline" size={24} color="#10b981" />
-            <Text style={styles.takenButtonText}>Mark Taken</Text>
-          </TouchableOpacity>
-        )}
-        
-        {item.current_status === 'taken' && (
-          <TouchableOpacity 
-            style={styles.undoButton}
-            onPress={() => handleUndoTaken(item.id, item.medicationName)}
-          >
-            <Ionicons name="arrow-undo" size={24} color="#f59e0b" />
-            <Text style={styles.undoButtonText}>Undo</Text>
-          </TouchableOpacity>
-        )}
+  {/* Taken/Mark Taken Button - Left Side */}
+  <View style={styles.statusActions}>
+    {(item.current_status === 'scheduled' || item.current_status === 'missed' || item.current_status === 'taken') && (
+      <TouchableOpacity 
+        style={styles.takenButton}
+        onPress={() => handleToggleTaken(item.id, item.medicationName, item.current_status)}
+      >
+        <Ionicons 
+          name={
+            item.current_status === 'taken' ? "checkmark-circle" : 
+            item.current_status === 'missed' ? "close-circle" : "checkmark-circle-outline"} 
+          size={24} 
+          color={
+            item.current_status === 'taken' ? '#10b981' :
+            item.current_status === 'missed' ? '#ef4444': '#10b981'} 
+        />
+        <Text style={
+          item.current_status === 'missed' ? styles.missedButtonText : styles.takenButtonText
+          }>
+            {getButtonText(item.current_status)}
+            </Text>
+      </TouchableOpacity>
+    )}
+  </View>
 
-        {item.current_status === 'missed' && (
-          <View style={styles.missedIndicator}>
-            <Ionicons name="close-circle" size={24} color="#ef4444" />
-            <Text style={styles.missedIndicatorText}>Missed</Text>
-          </View>
-        )}
+  {/* Edit and Delete Buttons - Right Side */}
+  <View style={styles.rightActions}>
+    <TouchableOpacity 
+      style={styles.editButton}
+      onPress={() => handleEditSchedule(item)}
+    >
+      <Ionicons name="create-outline" size={20} color="#3b82f6" />
+    </TouchableOpacity>
 
-        {/* Delete button */}
-        <TouchableOpacity 
-          style={styles.deleteButton}
-          onPress={() => handleDeleteSchedule(item.id, item.medicationName)}
-        >
-          <Ionicons name="trash-outline" size={20} color="#ef4444" />
-        </TouchableOpacity>
-      </View>
-    </View>
+    <TouchableOpacity 
+      style={styles.deleteButton}
+      onPress={() => handleDeleteSchedule(item.id, item.medicationName)}
+    >
+      <Ionicons name="trash-outline" size={20} color="#ef4444" />
+    </TouchableOpacity>
+  </View>
+</View>
+</View>
   );
 
   if (loading) {
@@ -483,6 +559,33 @@ export default function ScheduleScreen() {
           onRefresh={handleRefresh}
         />
       )}
+
+      <Modal
+        visible={showTimeModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleTimeSave}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPressOut={handleTimeSave}
+        >
+          <View style={styles.timeModal}>
+            <Text style={styles.modalTitle}>Select Taken Time</Text>
+            <DateTimePicker
+              value={editingScheduleId ? new Date(schedules.find(s => s.id === editingScheduleId)?.last_taken || new Date()) : new Date()}
+              mode="time"
+              display="spinner"
+              onChange={(event: any, selectedDate?: Date) => {
+                if (event.type === 'set' && selectedDate) {
+                  handleTimeChange(selectedDate);
+                }
+              }}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </ThemedView>
   );
 }
@@ -651,50 +754,50 @@ const styles = StyleSheet.create({
   lastTakenTextDark: {
     color: '#f7fafc',
   },
-  actionsContainer: {
-    alignItems: 'center',
-    minWidth: 100,
-  },
-  takenButton: {
-    alignItems: 'center',
-    padding: 6,
-    marginBottom: 4,
-  },
-  takenButtonText: {
-    fontSize: 9,
-    color: '#10b981',
-    marginTop: 2,
-    fontWeight: '600',
-  },
-  undoButton: {
-    alignItems: 'center',
-    padding: 6,
-    marginBottom: 4,
-  },
-  undoButtonText: {
-    fontSize: 9,
-    color: '#f59e0b',
-    marginTop: 2,
-    fontWeight: '600',
-  },
-  missedIndicator: {
-    alignItems: 'center',
-    padding: 6,
-    marginBottom: 4,
-  },
-  missedIndicatorText: {
-    fontSize: 9,
-    color: '#ef4444',
-    marginTop: 2,
-    fontWeight: '600',
-  },
-  deleteButton: {
-    padding: 6,
-    backgroundColor: '#fef2f2',
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#fecaca',
-  },
+actionsContainer: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  minWidth: 160,
+},
+statusActions: {
+  alignItems: 'center',
+},
+rightActions: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 8,
+},
+takenButton: {
+  alignItems: 'center',
+  padding: 6,
+},
+takenButtonText: {
+  fontSize: 9,
+  color: '#10b981',
+  marginTop: 2,
+  fontWeight: '600',
+},
+editButton: {
+  padding: 8,
+  backgroundColor: '#eff6ff',
+  borderRadius: 6,
+  borderWidth: 1,
+  borderColor: '#dbeafe',
+},
+deleteButton: {
+  padding: 8,
+  backgroundColor: '#fef2f2',
+  borderRadius: 6,
+  borderWidth: 1,
+  borderColor: '#fecaca',
+},
+missedButtonText: {
+  fontSize: 9,
+  color: '#ef4444', 
+  marginTop: 2,
+  fontWeight: '600',
+},
   emptyState: {
     flex: 1,
     justifyContent: 'center',
@@ -744,5 +847,37 @@ const styles = StyleSheet.create({
   todaySectionTitle: {
   color: '#3b82f6', 
   fontWeight: '700', 
+},
+takenTimeContainer: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 0,
+},
+editTimeButton: {
+  padding: 0,
+  marginLeft: -10,
+},
+modalOverlay: {
+  flex: 1,
+  backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+timePicker: {
+  width: '100%',
+  backgroundColor: 'white',
+},
+timeModal: {
+  backgroundColor: 'white',
+  padding: 20,
+  borderRadius: 12,
+  width: '80%',
+  alignItems: 'center',
+},
+modalTitle: {
+  fontSize: 18,
+  fontWeight: '600',
+  marginBottom: 16,
+  color: '#1f2937',
 },
 });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -15,11 +15,13 @@ import {
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { getAllMedications, getDosagesByMedication } from '@/database/medications';
-import { addMedicationSchedule } from '@/database/schedule';
+import { addMedicationSchedule, updateMedicationSchedule } from '@/database/schedule';
 import { getCurrentUserId } from '@/lib/session';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 
 interface Medication {
   id: number;
@@ -41,8 +43,12 @@ interface Dosage {
 }
 
 export default function AddScheduleScreen() {
+  const params = useLocalSearchParams();
+
   const [medications, setMedications] = useState<Medication[]>([]);
   const [selectedMedication, setSelectedMedication] = useState<Medication | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingScheduleId, setEditingScheduleId] = useState<number | null>(null);
   const [dosages, setDosages] = useState<Dosage[]>([]);
   const [selectedDosage, setSelectedDosage] = useState<string>('');
   const [customDosage, setCustomDosage] = useState('');
@@ -62,10 +68,154 @@ export default function AddScheduleScreen() {
   }, []);
 
   useEffect(() => {
-    if (selectedMedication) {
-      loadDosages(selectedMedication.name);
-    }
+    if (!selectedMedication) return;
+
+  // Reset auto-select guard so new medication can auto-select dosage in ADD mode
+  hasSetDosageFromEdit.current = false;
+
+  loadDosages(selectedMedication.name);
   }, [selectedMedication]);
+
+const hasSetDosageFromEdit = useRef(false);
+const isEditModeRef = useRef(isEditMode);
+
+useEffect(() => {
+  isEditModeRef.current = isEditMode;
+}, [isEditMode]);
+const initRef = useRef<string | boolean>(false);
+
+// FIXED: Run only when specific params that determine mode change
+useEffect(() => {
+  const init = async () => {
+    const editMode = params?.editMode === 'true';
+    const scheduleId = params?.scheduleId;
+    
+    // Create a unique key for current mode
+    const currentModeKey = `${editMode}-${scheduleId}`;
+    
+    // Skip if we've already initialized with these exact params
+    if (initRef.current === currentModeKey) return;
+    
+    initRef.current = currentModeKey;
+    console.log('Initializing mode:', editMode ? 'EDIT' : 'ADD', 'scheduleId:', scheduleId);
+    
+    if (editMode && scheduleId) {
+      // EDIT mode — populate from params
+      console.log('Initializing EDIT mode with schedule ID:', scheduleId);
+      setIsEditMode(true);
+      setEditingScheduleId(parseInt(scheduleId as string, 10));
+
+      // Reset form fields for edit mode
+      setSelectedMedication(null);
+      setSelectedDosage('');
+      setCustomDosage('');
+      
+      if (params.medicationName) {
+        const medName = params.medicationName as string;
+        setSelectedMedication({
+          id: -1,
+          name: medName,
+          info: '',
+          contraindications: '',
+          minCert: 0
+        });
+      }
+
+      if (params.dosage) setSelectedDosage(params.dosage as string);
+      if (params.scheduleTime) {
+        const [hours, minutes] = (params.scheduleTime as string).split(':');
+        const timeDate = new Date();
+        timeDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+        setScheduleTime(timeDate);
+      }
+      if (params.frequency) setFrequency(params.frequency as string);
+      if (params.startDate) setStartDate(new Date(params.startDate as string));
+      
+      // Clear any draft data for edit mode
+      try { 
+        await AsyncStorage.removeItem('@schedule_draft'); 
+      } catch (e) { 
+        console.warn('Failed to clear draft', e); 
+      }
+      
+    } else {
+      // ADD mode — try to restore a draft if available
+      console.log('Initializing ADD mode — attempting to load draft');
+      setIsEditMode(false);
+      setEditingScheduleId(null);
+
+      try {
+        const raw = await AsyncStorage.getItem('@schedule_draft');
+        if (raw) {
+          const draft = JSON.parse(raw);
+          if (draft.selectedMedication) setSelectedMedication(draft.selectedMedication);
+          if (draft.selectedDosage) setSelectedDosage(draft.selectedDosage);
+          if (draft.customDosage) setCustomDosage(draft.customDosage);
+          if (draft.scheduleTime) setScheduleTime(new Date(draft.scheduleTime));
+          if (draft.frequency) setFrequency(draft.frequency);
+          if (draft.startDate) setStartDate(new Date(draft.startDate));
+          if (draft.endDate) setEndDate(draft.endDate ? new Date(draft.endDate) : null);
+        } else {
+          // If no draft, reset form for fresh add
+          setSelectedMedication(null);
+          setSelectedDosage('');
+          setCustomDosage('');
+          setScheduleTime(new Date());
+          setFrequency('daily');
+          setStartDate(new Date());
+          setEndDate(null);
+        }
+      } catch (e) {
+        console.warn('Failed to load schedule draft', e);
+      }
+    }
+  };
+
+  init();
+}, [
+  params?.editMode, 
+  params?.scheduleId,
+  params?.medicationName,
+  params?.dosage,
+  params?.scheduleTime,
+  params?.frequency,
+  params?.startDate
+]); // ← FIXED: Include all used params // ← FIXED: Only specific params that matter
+
+
+// Persist a small draft for ADD-mode so user sees what they typed when they return
+useEffect(() => {
+  if (isEditMode) return; // only save drafts in ADD mode
+
+  const save = async () => {
+    try {
+      const draft = {
+        selectedMedication,
+        selectedDosage,
+        customDosage,
+        scheduleTime: scheduleTime ? scheduleTime.toISOString() : null,
+        frequency,
+        startDate: startDate ? startDate.toISOString() : null,
+        endDate: endDate ? endDate.toISOString() : null
+      };
+      await AsyncStorage.setItem('@schedule_draft', JSON.stringify(draft));
+    } catch (e) {
+      console.warn('Failed to save schedule draft', e);
+    }
+  };
+
+  save();
+}, [
+  selectedMedication,
+  selectedDosage,
+  customDosage,
+  scheduleTime,
+  frequency,
+  startDate,
+  endDate,
+  isEditMode
+]);
+
 
   const loadMedications = async () => {
     try {
@@ -77,44 +227,82 @@ export default function AddScheduleScreen() {
     }
   };
 
-  const loadDosages = async (medName: string) => {
-    try {
-      const dosageData = await getDosagesByMedication(medName);
-      setDosages(dosageData);
-      if (dosageData.length > 0) {
-        const standardDosage = dosageData.find(d => d.usage === 'Standard') || dosageData[0];
-        if (standardDosage.fixedDose) {
-          setSelectedDosage(`${standardDosage.fixedDose} ${standardDosage.unit}`);
-        } else if (standardDosage.perKg) {
-          setSelectedDosage(`${standardDosage.perKg} ${standardDosage.unit}/kg`);
+  // Prevent accidental overwrites during edit initialization by tracking whether
+// we've already auto-selected a dosage for the current medication.
+const loadDosages = async (medName: string) => {
+  try {
+    const dosageData = await getDosagesByMedication(medName);
+    setDosages(dosageData);
+
+    // Only auto-select dosage when: we are in ADD mode AND we haven't auto-selected yet
+    // This avoids flipping selectedDosage during edit initialization.
+    if (dosageData.length > 0 && !isEditModeRef.current && !hasSetDosageFromEdit.current) {
+      const standardDosage = dosageData.find(d => d.usage === 'Standard') || dosageData[0];
+      let autoText = '';
+      if (standardDosage.fixedDose) {
+        autoText = `${standardDosage.fixedDose} ${standardDosage.unit}`;
+      } else if (standardDosage.perKg) {
+        autoText = `${standardDosage.perKg} ${standardDosage.unit}/kg`;
+      }
+      if (autoText) {
+        setSelectedDosage(autoText);
+        hasSetDosageFromEdit.current = true;
+      }
+    }
+  } catch (error) {
+    console.error('Error loading dosages:', error);
+  }
+};
+
+
+  // REPLACE LINES 112-150 with this:
+
+const handleAddSchedule = async () => {
+  if (!selectedMedication) {
+    Alert.alert('Error', 'Please select a medication');
+    return;
+  }
+
+  const finalDosage = selectedDosage || customDosage.trim();
+  if (!finalDosage) {
+    Alert.alert('Error', 'Please select or enter a dosage');
+    return;
+  }
+
+  try {
+    setLoading(true);
+    const userId = await getCurrentUserId();
+    
+    if (!userId) {
+      setLoading(false);
+      Alert.alert('Error', 'Please log in to manage schedules');
+      return;
+    }
+
+    const hh = scheduleTime.getHours().toString().padStart(2, '0');
+    const mm = scheduleTime.getMinutes().toString().padStart(2, '0');
+    const hhmm = `${hh}:${mm}`;
+
+    if (isEditMode && editingScheduleId) {
+      // UPDATE existing schedule
+      await updateMedicationSchedule(
+        editingScheduleId,
+        selectedMedication.name,
+        finalDosage,
+        hhmm,
+        frequency,
+        startDate.toISOString(),
+        endDate ? endDate.toISOString() : undefined
+      );
+      try { await AsyncStorage.removeItem('@schedule_draft'); } catch (e) { console.warn('Failed to clear draft', e); }
+      Alert.alert('Success', 'Medication schedule updated successfully!', [
+        { 
+          text: 'OK', 
+          onPress: () => router.replace('/(tabs)/schedule')
         }
-      }
-    } catch (error) {
-      console.error('Error loading dosages:', error);
-    }
-  };
-
-  const handleAddSchedule = async () => {
-    if (!selectedMedication) {
-      Alert.alert('Error', 'Please select a medication');
-      return;
-    }
-
-    const finalDosage = selectedDosage || customDosage.trim();
-    if (!finalDosage) {
-      Alert.alert('Error', 'Please select or enter a dosage');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const userId = await getCurrentUserId();
-      
-      if (!userId) {
-        Alert.alert('Error', 'Please log in to add schedules');
-        return;
-      }
-
+      ]);
+    } else {
+      // CREATE new schedule
       await addMedicationSchedule(
         userId,
         selectedMedication.name,
@@ -125,18 +313,22 @@ export default function AddScheduleScreen() {
         startDate.toISOString(),
         endDate ? endDate.toISOString() : undefined
       );
+      try { await AsyncStorage.removeItem('@schedule_draft'); } catch (e) { console.warn('Failed to clear draft', e); }
 
       Alert.alert('Success', 'Medication schedule added successfully!', [
-        { text: 'OK', onPress: () => router.back() }
+        { 
+          text: 'OK', 
+          onPress: () => router.replace('/(tabs)/schedule') // Go back to schedule screen
+        }
       ]);
-    } catch (error) {
-      console.error('Error adding schedule:', error);
-      Alert.alert('Error', 'Failed to add medication schedule');
-    } finally {
-      setLoading(false);
     }
-  };
-
+  } catch (error) {
+    console.error('Error saving schedule:', error);
+    Alert.alert('Error', `Failed to ${isEditMode ? 'update' : 'add'} medication schedule`);
+  } finally {
+    setLoading(false);
+  }
+};
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
   };
@@ -223,10 +415,12 @@ export default function AddScheduleScreen() {
     <ThemedView style={styles.container}>
       {/* Fixed Header - Single Line */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.push('/(tabs)/schedule')} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={scheme === 'dark' ? '#f7fafc' : '#2d3748'} />
         </TouchableOpacity>
-        <ThemedText type="subtitle" style={styles.title}>Add Medication Schedule</ThemedText>
+        <ThemedText type="subtitle" style={styles.title}>
+        {isEditMode ? 'Edit Medication Schedule' : 'Add Medication Schedule'}
+        </ThemedText>
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -507,8 +701,10 @@ export default function AddScheduleScreen() {
             <ActivityIndicator color="white" />
           ) : (
             <>
-              <Ionicons name="add-circle" size={20} color="white" />
-              <Text style={styles.addButtonText}>Add to Schedule</Text>
+              <Ionicons name={isEditMode ? "checkmark-circle" : "add-circle"} size={20} color="white" />
+              <Text style={styles.addButtonText}>
+                {isEditMode ? 'Update Schedule' : 'Add to Schedule'}
+              </Text>
             </>
           )}
         </TouchableOpacity>
