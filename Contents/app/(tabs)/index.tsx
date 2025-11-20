@@ -8,6 +8,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { SearchHistory } from "@/components/SearchHistory";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
 import { getAllMedications } from "@/database/medications";
+import { isGuestMode } from "@/lib/userMode";  
+import { getMedicationsForUser } from "@/database/medications"; 
+
         
 let hasShownWarningThisSession = false;
 
@@ -19,10 +22,15 @@ export default function HomeScreen() {
   const [filterVisible, setFilterVisible] = useState(false);
   const [sortOption, setSortOption] = useState<"default" | "az" | "za">("default");
   const [medications, setMedications] = useState<{ id: string; name: string; minCert: number; }[]>([]);
+  const [isGuest, setIsGuest] = useState(false);
 
   useLayoutEffect(() => {
     const loadMeds = async () => {
-      const meds = await getAllMedications();
+      const guestMode = await isGuestMode();
+      setIsGuest(guestMode);
+
+      const testUserCertLevel = 2;
+      const meds = await getMedicationsForUser(testUserCertLevel, guestMode);
       setMedications(meds as { id: string; name: string; minCert: number; }[]);
     };
     loadMeds();
@@ -47,8 +55,10 @@ export default function HomeScreen() {
     setSearch(text);
   };
 
-  let testUserCertLevel = 2;
-  let filteredMeds = medications.filter((med) => (med.name.toLowerCase().includes(search.trim().toLowerCase())) && (med.minCert >= testUserCertLevel));
+   // Filtering: search only (cert level already filtered in DB query)
+  let filteredMeds = medications.filter(med =>
+    med.name.toLowerCase().includes(search.trim().toLowerCase())
+  );
   if (sortOption === "az") filteredMeds = filteredMeds.slice().sort((a, b) => a.name.localeCompare(b.name));
   else if (sortOption === "za") filteredMeds = filteredMeds.slice().sort((a, b) => b.name.localeCompare(a.name));
   

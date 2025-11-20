@@ -60,6 +60,21 @@ export const initializeDB = async () => {
   } catch (err) {
     console.warn("Failed to alter medications table:", err);
   }
+  
+    // OTC column added (for general users)
+  try {
+    const columns = await db.getAllAsync(`PRAGMA table_info(medications);`);
+    const hasIsOTC = columns.some((c: any) => c.name === 'isOTC');
+
+    if (!hasIsOTC) {
+      await db.execAsync(`ALTER TABLE medications ADD COLUMN isOTC INTEGER DEFAULT 0;`);
+      console.log("✅ Added isOTC column (0=Prescription, 1=OTC)");
+    } else {
+      console.log("✅ isOTC column already exists");
+    }
+  } catch (err) {
+    console.error("❌ Failed to add isOTC column:", err);
+  }
   const result = await db.getFirstAsync(`PRAGMA foreign_keys`) as { foreign_keys: number } | null;
   console.log('Foreign keys enabled:', result?.foreign_keys);
 };
@@ -69,12 +84,13 @@ export const upsertMedication = async (
   nameE: string,
   infoE: string,
   contraindicationsE: string,
-  minCertE: number
+  minCertE: number,
+  isOTCE: number = 0 
 ) => {
   await db.runAsync(
-    `INSERT OR REPLACE INTO medications (name, info, contraindications, minCert)
-     VALUES (?, ?, ?, ?)`,
-    [nameE, infoE, contraindicationsE, minCertE]
+    `INSERT OR REPLACE INTO medications (name, info, contraindications, minCert, isOTC)
+     VALUES (?, ?, ?, ?, ?)`,
+    [nameE, infoE, contraindicationsE, minCertE, isOTCE]
   );
 };
 
@@ -313,5 +329,32 @@ export const getAllUsers = async () => {
     createdAt: string;
   }[];
 };
+
+// Get OTC medications only (for general users)
+export const getOTCMedications = async () => {
+  const result = await db.getAllAsync(
+    "SELECT * FROM medications WHERE isOTC = 1"
+  );
+  return result;
+};
+
+// Get medications filtered by user mode
+export const getMedicationsForUser = async (
+  certLevel: number,
+  isGuestMode: boolean = false
+) => {
+  if (isGuestMode) {
+    // Guest user: OTC medications only
+    return await getOTCMedications();
+  } else {
+    // Certified user: all medications within cert level
+    const result = await db.getAllAsync(
+      "SELECT * FROM medications WHERE minCert <= ?",
+      [certLevel]
+    );
+    return result;
+  }
+};
+
 
 export default db;
