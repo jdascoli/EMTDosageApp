@@ -28,7 +28,8 @@ export default function TabLayout() {
           "Aspirin",
           "Reduces pain, fever, and inflammation; inhibits platelet aggregation.",
           "Patients can be allergic to Aspirin. Those with asthma or known bronchospasm associated with NSAIDs should be cautious. Increases risk of GI bleeding in patients with peptic ulcer disease or gastritis.",
-          1
+          1,
+          1 //OTC
         );
         await upsertMedication(
           "Nitroglycerin",
@@ -52,26 +53,30 @@ export default function TabLayout() {
           "Glucose",
           "Raises blood glucose levels rapidly to treat severe hypoglycemia in conscious patients.",
           "Contraindicated in patients with altered mental status or inability to swallow. Do not give to unconscious patients due to aspiration risk.",
-          1
+          1,
+          1 // OTC
         );
         await upsertMedication(
           "Activated Charcoal",
           "Adsorbs ingested toxins in the gastrointestinal tract to prevent absorption (used in poisoning/overdose).",
           "Contraindicated in patients with altered mental status, GI perforation, or caustic ingestions. Not effective for alcohols, acids, alkalis, or iron.",
-          1
+          1,
+          1 // OTC
         );
         await upsertMedication(
           "Oxygen",
           "Increases oxygen saturation in blood to treat hypoxia and respiratory distress.",
           "No absolute contraindications in emergency settings. Use cautiously in COPD patients (risk of CO2 retention). Monitor for oxygen toxicity in prolonged high-concentration use.",
-          1
+          1,
+          1 // OTC
         );
 
         await upsertMedication(
           "Oral Glucose",
           "Quick-absorbing glucose gel for conscious hypoglycemic patients.",
           "Contraindicated in unconscious or seizing patients. Patient must be able to swallow and protect airway.",
-          1
+          1,
+          1 // OTC
         );
         await upsertMedication(
           "Epinephrine Auto-Injector",

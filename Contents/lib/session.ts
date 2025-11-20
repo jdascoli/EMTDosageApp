@@ -11,6 +11,7 @@ const LAST_ACTIVITY_KEY = 'emt_last_activity';
 interface Session {
   userId: number;
   userName: string;
+  certLevel: number;
   token: string;
   createdAt: number;
   lastActivity: number;
@@ -25,7 +26,8 @@ interface Session {
 
 export async function createSession(
   userId: number,
-  userName: string
+  userName: string,
+  certLevel: number
 ): Promise<string> {
   // Generate secure random token 
   const tokenBytes = await Crypto.getRandomBytesAsync(16);
@@ -38,6 +40,7 @@ export async function createSession(
   const session: Session = {
     userId,
     userName,
+    certLevel,
     token,
     createdAt: now,
     lastActivity: now,

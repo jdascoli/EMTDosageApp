@@ -15,6 +15,7 @@ import {
 import { getUserByName } from "@/database/medications";
 import { createSession } from "@/lib/session";
 import { verifyPassword } from "@/lib/auth";
+import { enableGuestMode, disableGuestMode } from "@/lib/userMode";
 
 
 export default function LoginScreen() {
@@ -42,8 +43,9 @@ export default function LoginScreen() {
         return;
       }
 
-      await createSession(user.id, user.name); //create session
-
+      await createSession(user.id, user.name, user.certLevel); //create session
+      await disableGuestMode();
+      
       console.log("Session created for:", user.name);
       router.replace("/(tabs)");
     }
@@ -52,6 +54,19 @@ export default function LoginScreen() {
       Alert.alert("Error", "Failed to log in. Please try again.");
     }
   };
+
+  // Guest mode handler
+  const handleGuestMode = async () => {
+    try {
+      await enableGuestMode();
+      console.log("Guest mode enabled");
+      router.replace("/(tabs)");
+    } catch (err) {
+      console.error("Guest mode error:", err);
+      Alert.alert("Error", "Failed to enter guest mode");
+    }
+  };
+
 
   return (
     <ThemedView style={styles.container}>
@@ -110,6 +125,21 @@ export default function LoginScreen() {
           onPress={handleLogin}
         >
           <Text style={styles.loginButtonText}>Log In</Text>
+        </TouchableOpacity>
+
+        {/* Guest Mode Button */}
+        <TouchableOpacity
+        style={[styles.guestButton, { 
+            backgroundColor: scheme === "dark" ? "#374151" : "#e5e7eb",
+            borderColor: scheme === "dark" ? "#4b5563" : "#d1d5db"
+          }]}
+          onPress={handleGuestMode}
+        >
+          <Text style={[styles.guestButtonText, {
+            color: scheme === "dark" ? "#f3f4f6" : "#374151"
+          }]}>
+            Continue as Guest
+          </Text>
         </TouchableOpacity>
 
         {/* Register Link */}
@@ -189,4 +219,17 @@ const styles = StyleSheet.create({
     color: "#007AFF",
     fontWeight: "600",
   },
+  guestButton: {
+    height: 50,
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  guestButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+
 });

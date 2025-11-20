@@ -7,6 +7,8 @@ import { useEffect, useState } from 'react';// added for useState
 import { Picker } from '@react-native-picker/picker';
 import { WarningPopup } from '@/components/warningPopup.tsx';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { isGuestMode, disableGuestMode } from '@/lib/userMode';  
+import { clearSession, getSession } from '@/lib/session';  
 
 
 type CertificationLevel = 'EMT-B' | 'EMT-I' | 'AEMT' | 'Paramedic';
@@ -15,6 +17,7 @@ type CertificationLevel = 'EMT-B' | 'EMT-I' | 'AEMT' | 'Paramedic';
 export default function SettingsScreen() {
   const [isToggled, setIsToggled] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
+  const [isGuest, setIsGuest] = useState(false);
 
   // const toggleFeature = (featureName: string, isEnabled: boolean) => {
   //   // console.log("toggleFeature called with", featureName, isEnabled);
@@ -45,7 +48,19 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     loadCertificationLevel();
+    checkGuestMode();
   }, []);
+
+      const checkGuestMode = async () => {
+    const guestMode = await isGuestMode();
+    const session = await getSession();
+    
+    console.log('🔍 Settings - Guest mode:', guestMode);
+    console.log('🔍 Settings - Session:', session);
+    
+    // no session means guest
+    setIsGuest(!session);
+  };
 
   const loadCertificationLevel = async () => {
     try {
@@ -71,6 +86,17 @@ export default function SettingsScreen() {
     }
   };
 
+    const handleLogout = async () => {  
+    try {
+      await clearSession();
+      await disableGuestMode();
+      router.replace("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
+
+
   // Running Code
   return (
     <ParallaxScrollView
@@ -85,15 +111,24 @@ export default function SettingsScreen() {
         <ThemedText type="title">Settings</ThemedText>
       </ThemedView>
 
-      {/* Account Section */}
+       {/* Account Section */}
       <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">Account</ThemedText>
-        <TouchableOpacity
-          style={[styles.logoutButton]}
-          onPress={() => router.replace("/login")}
-        >
-          <Text style={styles.logoutButtonText}>Log Out</Text>
-        </TouchableOpacity>
+        {isGuest ? (
+          <TouchableOpacity
+            style={[styles.loginButton]}
+            onPress={() => router.replace("/login")}
+          >
+            <Text style={styles.loginButtonText}>Log In</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[styles.logoutButton]}
+            onPress={handleLogout}
+          >
+            <Text style={styles.logoutButtonText}>Log Out</Text>
+          </TouchableOpacity>
+        )}
       </ThemedView>
 
 
@@ -207,7 +242,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 122, 255, 0.0)",
     padding: 5,
     borderRadius: 0,
-    alignItems: "left",
+    alignItems: "flex-start",
     marginVertical: 4,
     marginHorizontal: 5,
     width: 144,
@@ -215,6 +250,18 @@ const styles = StyleSheet.create({
   },
   disclaimerButtonText: {
     color: "rgba(0, 122, 255, 1.0)",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+   loginButton: {
+    backgroundColor: "#007AFF",
+    padding: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    marginVertical: 10,
+  },
+  loginButtonText: {
+    color: "#fff",
     fontSize: 16,
     fontWeight: "600",
   },
