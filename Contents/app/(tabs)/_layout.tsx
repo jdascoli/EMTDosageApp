@@ -208,12 +208,28 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="schedule"
+        options={{
+          title: "Schedule",
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="calendar" color={color} />
+          ),
+        }}
+     />
+      <Tabs.Screen
         name="settings"
         options={{
           title: "Settings",
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="gear" color={color} />
           ),
+        }}
+      />
+      
+     <Tabs.Screen
+        name="add_schedule"
+        options={{
+          href: null, // This hides it from the tab bar
         }}
       />
     </Tabs>
