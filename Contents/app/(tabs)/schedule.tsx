@@ -29,6 +29,7 @@ export default function ScheduleScreen() {
   const [editingScheduleId, setEditingScheduleId] = useState<number | null>(null);
   const scheme = useColorScheme();
   const schedulesRef = useRef<ScheduleItem[]>([]);
+  const authAlertShownRef = useRef(false);
 
   useEffect(() => {
     loadUserSchedules();
@@ -92,17 +93,37 @@ export default function ScheduleScreen() {
     schedulesRef.current = schedules;
   }, [schedules]);
 
+  useEffect(() => {
+  return () => {
+    authAlertShownRef.current = false;
+  };
+}, []);
+
   const loadUserSchedules = async () => {
     try {
       setLoading(true);
       const currentUserId = await getCurrentUserId();
       
       if (!currentUserId) {
-        Alert.alert('Authentication Required', 'Please log in to view your medication schedule');
+        if (!authAlertShownRef.current) {
+        authAlertShownRef.current = true;
+        Alert.alert(
+            'Authentication Required', 
+            'Please log in to view your medication schedule',
+            [
+              {
+                text: 'OK',
+                onPress: () => router.replace('/login')
+              }
+            ]
+          );
+        }
         setSchedules([]);
         setLoading(false);
         return;
       }
+      authAlertShownRef.current = false;
+      
 
       const userSchedules = await getUserSchedules(currentUserId);
       
