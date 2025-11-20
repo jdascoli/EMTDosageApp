@@ -3,10 +3,11 @@ import { Platform } from 'react-native';
 
 import { HapticTab } from "@/components/HapticTab";
 import { IconSymbol } from "@/components/ui/IconSymbol";
+import Ionicons from '@expo/vector-icons/Ionicons';
 import TabBarBackground from "@/components/ui/TabBarBackground";
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
-import db, { initializeDB, upsertMedication, upsertDosage } from "@/database/medications";
+import db, { initializeDB, upsertMedication, upsertDosage, upsertReminder } from "@/database/medications";
 import { useEffect, useState } from 'react';
 
 export default function TabLayout() {
@@ -174,8 +175,8 @@ export default function TabLayout() {
 
         setDbReady(true);
       }
-      catch {
-        console.error("DB initialization failed:");
+      catch (error){
+        console.error("DB initialization failed:", error);
       }
     };
 
@@ -204,6 +205,15 @@ export default function TabLayout() {
           title: "Home",
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="house.fill" color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="reminders"
+        options={{
+          title: "Reminders",
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="notifications" size={28} color={color} />
           ),
         }}
       />

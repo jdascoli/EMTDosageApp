@@ -38,6 +38,15 @@ export const initializeDB = async () => {
       createdAt TEXT NOT NULL
     );
   `);
+  await db.execAsync(`
+    /* Create reminders table */
+    CREATE TABLE IF NOT EXISTS reminders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      description TEXT NOT NULL,
+      time TEXT,
+      userId INTEGER DEFAULT -1
+    );
+  `);
   const userCols = await db.getAllAsync(`PRAGMA table_info(users)`);
 
   if (!userCols.some((c: any) => c.name === "certNumber")) {
@@ -310,6 +319,50 @@ export const getAllUsers = async () => {
     certLevel: number;
     createdAt: string;
   }[];
+};
+
+// Reminders Table Functions
+export const upsertReminder = async (
+  desc: string,
+  time: string,
+  med_id: string,
+  user_id: number
+) => {
+  await db.runAsync(
+    `INSERT OR REPLACE INTO reminders (description, time, medId, userId)
+     VALUES (?, ?, ?, ?)`,
+    [desc, time, med_id, user_id]
+  );
+};
+
+// Fetch all medications
+export const getAllReminders = async () => {
+  const result = await db.getAllAsync("SELECT * FROM reminders");
+  return result;
+};
+
+// New reminder insertion
+export const addNewReminder = async (
+  desc: string,
+  time: string,
+) => {
+    const result = await db.runAsync(
+    `INSERT  INTO reminders (description, time, userId)
+     VALUES (?, ?, ?)`,
+    [desc, time, 1]
+    );
+    return result;
+};
+
+// Reminder removal
+export const removeReminder = async (
+  remId: number,
+) => {
+    const result = await db.runAsync(
+    `DELETE FROM reminders WHERE id = ?;`,
+    [remId]
+    );
+    return result;
 };
 
 export default db;

@@ -47,8 +47,8 @@ export default function HomeScreen() {
     setSearch(text);
   };
 
-  let testUserCertLevel = 2;
-  let filteredMeds = medications.filter((med) => (med.name.toLowerCase().includes(search.trim().toLowerCase())) && (med.minCert >= testUserCertLevel));
+  let testUserCertLevel = 3;
+  let filteredMeds = medications.filter((med) => (med.name.toLowerCase().includes(search.trim().toLowerCase())) && (testUserCertLevel >= med.minCert));
   if (sortOption === "az") filteredMeds = filteredMeds.slice().sort((a, b) => a.name.localeCompare(b.name));
   else if (sortOption === "za") filteredMeds = filteredMeds.slice().sort((a, b) => b.name.localeCompare(a.name));
   
@@ -92,7 +92,6 @@ export default function HomeScreen() {
       <SearchHistory onSearchTermSelect={handleSearchChange} />
 
       {/* Med list */}
-
       <FlatList data={filteredMeds} renderItem={renderItem} keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}/>
        {showWarning && <WarningPopup onClose={handleCloseWarning} />}
