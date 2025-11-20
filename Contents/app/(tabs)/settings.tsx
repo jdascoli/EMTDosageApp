@@ -5,7 +5,7 @@ import { router } from "expo-router";
 import { Image, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { useEffect, useState } from 'react';// added for useState
 import { Picker } from '@react-native-picker/picker';
-import { WarningPopup } from '@/components/warningPopup.tsx';
+import { WarningPopup } from '@/components/warningPopup';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { isGuestMode, disableGuestMode } from '@/lib/userMode';  
 import { clearSession, getSession } from '@/lib/session';  
