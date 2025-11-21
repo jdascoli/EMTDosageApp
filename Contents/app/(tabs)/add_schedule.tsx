@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -15,11 +15,13 @@ import {
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { getAllMedications, getDosagesByMedication } from '@/database/medications';
-import { addMedicationSchedule } from '@/database/schedule';
+import { addMedicationSchedule, updateMedicationSchedule } from '@/database/schedule';
 import { getCurrentUserId } from '@/lib/session';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 
 interface Medication {
   id: number;
@@ -41,11 +43,17 @@ interface Dosage {
 }
 
 export default function AddScheduleScreen() {
+  const params = useLocalSearchParams();
+
   const [medications, setMedications] = useState<Medication[]>([]);
   const [selectedMedication, setSelectedMedication] = useState<Medication | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingScheduleId, setEditingScheduleId] = useState<number | null>(null);
   const [dosages, setDosages] = useState<Dosage[]>([]);
   const [selectedDosage, setSelectedDosage] = useState<string>('');
   const [customDosage, setCustomDosage] = useState('');
+  const [calculatedDosage, setCalculatedDosage] = useState('');
+  const [hasCalculatedDose, setHasCalculatedDose] = useState(false);
   const [scheduleTime, setScheduleTime] = useState(new Date());
   const [frequency, setFrequency] = useState('daily');
   const [startDate, setStartDate] = useState(new Date());
@@ -62,10 +70,153 @@ export default function AddScheduleScreen() {
   }, []);
 
   useEffect(() => {
-    if (selectedMedication) {
-      loadDosages(selectedMedication.name);
-    }
+    if (!selectedMedication) return;
+
+  hasSetDosageFromEdit.current = false;
+
+  loadDosages(selectedMedication.name);
   }, [selectedMedication]);
+
+useEffect(() => {
+  if (params.calculatedDose) {
+    const dose = params.calculatedDose as string;
+    setCalculatedDosage(dose);
+    setSelectedDosage(dose);
+    setHasCalculatedDose(true);
+    
+    setCustomDosage(dose);
+  }
+}, [params.calculatedDose]);
+
+const hasSetDosageFromEdit = useRef(false);
+const isEditModeRef = useRef(isEditMode);
+
+useEffect(() => {
+  isEditModeRef.current = isEditMode;
+}, [isEditMode]);
+const initRef = useRef<string | boolean>(false);
+
+useEffect(() => {
+  const init = async () => {
+    const editMode = params?.editMode === 'true';
+    const scheduleId = params?.scheduleId;
+    
+    const currentModeKey = `${editMode}-${scheduleId}`;
+    
+    if (initRef.current === currentModeKey) return;
+    
+    initRef.current = currentModeKey;
+    console.log('Initializing mode:', editMode ? 'EDIT' : 'ADD', 'scheduleId:', scheduleId);
+    
+    if (editMode && scheduleId) {
+      console.log('Initializing EDIT mode with schedule ID:', scheduleId);
+      setIsEditMode(true);
+      setEditingScheduleId(parseInt(scheduleId as string, 10));
+
+      setSelectedMedication(null);
+      setSelectedDosage('');
+      setCustomDosage('');
+      
+      if (params.medicationName) {
+        const medName = params.medicationName as string;
+        setSelectedMedication({
+          id: -1,
+          name: medName,
+          info: '',
+          contraindications: '',
+          minCert: 0
+        });
+      }
+
+      if (params.dosage) setSelectedDosage(params.dosage as string);
+      if (params.scheduleTime) {
+        const [hours, minutes] = (params.scheduleTime as string).split(':');
+        const timeDate = new Date();
+        timeDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+        setScheduleTime(timeDate);
+      }
+      if (params.frequency) setFrequency(params.frequency as string);
+      if (params.startDate) setStartDate(new Date(params.startDate as string));
+      
+      try { 
+        await AsyncStorage.removeItem('@schedule_draft'); 
+      } catch (e) { 
+        console.warn('Failed to clear draft', e); 
+      }
+      
+    } else {
+      console.log('Initializing ADD mode — attempting to load draft');
+      setIsEditMode(false);
+      setEditingScheduleId(null);
+
+      try {
+        const raw = await AsyncStorage.getItem('@schedule_draft');
+        if (raw) {
+          const draft = JSON.parse(raw);
+          if (draft.selectedMedication) setSelectedMedication(draft.selectedMedication);
+          if (draft.selectedDosage) setSelectedDosage(draft.selectedDosage);
+          if (draft.customDosage) setCustomDosage(draft.customDosage);
+          if (draft.scheduleTime) setScheduleTime(new Date(draft.scheduleTime));
+          if (draft.frequency) setFrequency(draft.frequency);
+          if (draft.startDate) setStartDate(new Date(draft.startDate));
+          if (draft.endDate) setEndDate(draft.endDate ? new Date(draft.endDate) : null);
+        } else {
+          setSelectedMedication(null);
+          setSelectedDosage('');
+          setCustomDosage('');
+          setScheduleTime(new Date());
+          setFrequency('daily');
+          setStartDate(new Date());
+          setEndDate(null);
+        }
+      } catch (e) {
+        console.warn('Failed to load schedule draft', e);
+      }
+    }
+  };
+
+  init();
+}, [
+  params?.editMode, 
+  params?.scheduleId,
+  params?.medicationName,
+  params?.dosage,
+  params?.scheduleTime,
+  params?.frequency,
+  params?.startDate
+]); 
+useEffect(() => {
+  if (isEditMode) return; 
+
+  const save = async () => {
+    try {
+      const draft = {
+        selectedMedication,
+        selectedDosage,
+        customDosage,
+        scheduleTime: scheduleTime ? scheduleTime.toISOString() : null,
+        frequency,
+        startDate: startDate ? startDate.toISOString() : null,
+        endDate: endDate ? endDate.toISOString() : null
+      };
+      await AsyncStorage.setItem('@schedule_draft', JSON.stringify(draft));
+    } catch (e) {
+      console.warn('Failed to save schedule draft', e);
+    }
+  };
+
+  save();
+}, [
+  selectedMedication,
+  selectedDosage,
+  customDosage,
+  scheduleTime,
+  frequency,
+  startDate,
+  endDate,
+  isEditMode
+]);
+
 
   const loadMedications = async () => {
     try {
@@ -77,66 +228,99 @@ export default function AddScheduleScreen() {
     }
   };
 
-  const loadDosages = async (medName: string) => {
-    try {
-      const dosageData = await getDosagesByMedication(medName);
-      setDosages(dosageData);
-      if (dosageData.length > 0) {
-        const standardDosage = dosageData.find(d => d.usage === 'Standard') || dosageData[0];
-        if (standardDosage.fixedDose) {
-          setSelectedDosage(`${standardDosage.fixedDose} ${standardDosage.unit}`);
-        } else if (standardDosage.perKg) {
-          setSelectedDosage(`${standardDosage.perKg} ${standardDosage.unit}/kg`);
+const loadDosages = async (medName: string) => {
+  try {
+    const dosageData = await getDosagesByMedication(medName);
+    setDosages(dosageData);
+
+    if (dosageData.length > 0 && !isEditModeRef.current && !hasSetDosageFromEdit.current) {
+      const standardDosage = dosageData.find(d => d.usage === 'Standard') || dosageData[0];
+      let autoText = '';
+      if (standardDosage.fixedDose) {
+        autoText = `${standardDosage.fixedDose} ${standardDosage.unit}`;
+      } else if (standardDosage.perKg) {
+        autoText = `${standardDosage.perKg} ${standardDosage.unit}/kg`;
+      }
+      if (autoText) {
+        setSelectedDosage(autoText);
+        hasSetDosageFromEdit.current = true;
+      }
+    }
+  } catch (error) {
+    console.error('Error loading dosages:', error);
+  }
+};
+
+const handleAddSchedule = async () => {
+  if (!selectedMedication) {
+    Alert.alert('Error', 'Please select a medication');
+    return;
+  }
+
+  const finalDosage = selectedDosage || customDosage.trim();
+  if (!finalDosage) {
+    Alert.alert('Error', 'Please select or enter a dosage');
+    return;
+  }
+
+  try {
+    setLoading(true);
+    const userId = await getCurrentUserId();
+    
+    if (!userId) {
+      setLoading(false);
+      Alert.alert('Error', 'Please log in to manage schedules');
+      return;
+    }
+
+    const hh = scheduleTime.getHours().toString().padStart(2, '0');
+    const mm = scheduleTime.getMinutes().toString().padStart(2, '0');
+    const hhmm = `${hh}:${mm}`;
+
+    if (isEditMode && editingScheduleId) {
+      await updateMedicationSchedule(
+        editingScheduleId,
+        selectedMedication.name,
+        finalDosage,
+        hhmm,
+        frequency,
+        startDate.toISOString(),
+        endDate ? endDate.toISOString() : undefined
+      );
+      try { await AsyncStorage.removeItem('@schedule_draft'); } catch (e) { console.warn('Failed to clear draft', e); }
+      Alert.alert('Success', 'Medication schedule updated successfully!', [
+        { 
+          text: 'OK', 
+          onPress: () => router.replace('/(tabs)/schedule')
         }
-      }
-    } catch (error) {
-      console.error('Error loading dosages:', error);
-    }
-  };
-
-  const handleAddSchedule = async () => {
-    if (!selectedMedication) {
-      Alert.alert('Error', 'Please select a medication');
-      return;
-    }
-
-    const finalDosage = selectedDosage || customDosage.trim();
-    if (!finalDosage) {
-      Alert.alert('Error', 'Please select or enter a dosage');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const userId = await getCurrentUserId();
-      
-      if (!userId) {
-        Alert.alert('Error', 'Please log in to add schedules');
-        return;
-      }
-
+      ]);
+    } else {
       await addMedicationSchedule(
         userId,
         selectedMedication.name,
         selectedMedication.name,
         finalDosage,
-        scheduleTime.toTimeString().split(' ')[0].slice(0, 5), // HH:MM format
+        scheduleTime.toTimeString().split(' ')[0].slice(0, 5),
         frequency,
         startDate.toISOString(),
         endDate ? endDate.toISOString() : undefined
       );
+      try { await AsyncStorage.removeItem('@schedule_draft'); } catch (e) { console.warn('Failed to clear draft', e); }
 
       Alert.alert('Success', 'Medication schedule added successfully!', [
-        { text: 'OK', onPress: () => router.back() }
+        { 
+          text: 'OK', 
+          onPress: () => router.replace('/(tabs)/schedule') 
+        }
       ]);
-    } catch (error) {
-      console.error('Error adding schedule:', error);
-      Alert.alert('Error', 'Failed to add medication schedule');
-    } finally {
-      setLoading(false);
     }
-  };
-
+  } catch (error) {
+    console.error('Error saving schedule:', error);
+    Alert.alert('Error', `Failed to ${isEditMode ? 'update' : 'add'} medication schedule`);
+  } finally {
+    setLoading(false);
+  }
+};
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
   };
@@ -149,37 +333,31 @@ export default function AddScheduleScreen() {
     });
   };
 
-  // Time Picker Handler
   const onTimeChange = (event: any, selectedTime?: Date) => {
     if (selectedTime) {
       setScheduleTime(selectedTime);
     }
     
-    // On Android, close the picker when a time is selected
     if (Platform.OS === 'android') {
       setShowTimePicker(false);
     }
   };
 
-  // Date Picker Handler
   const onStartDateChange = (event: any, selectedDate?: Date) => {
     if (selectedDate) {
       setStartDate(selectedDate);
     }
     
-    // On Android, close the picker when a date is selected
     if (Platform.OS === 'android') {
       setShowStartDatePicker(false);
     }
   };
 
-  // End Date Picker Handler
   const onEndDateChange = (event: any, selectedDate?: Date) => {
     if (selectedDate) {
       setEndDate(selectedDate);
     }
     
-    // On Android, close the picker when a date is selected
     if (Platform.OS === 'android') {
       setShowEndDatePicker(false);
     }
@@ -199,7 +377,6 @@ export default function AddScheduleScreen() {
     { label: 'Monthly', value: 'monthly' }
   ];
 
-  // Render Picker Modal for iOS
   const renderPickerModal = (visible: boolean, onClose: () => void, children: React.ReactNode) => (
     <Modal
       visible={visible}
@@ -221,16 +398,16 @@ export default function AddScheduleScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      {/* Fixed Header - Single Line */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.push('/(tabs)/schedule')} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={scheme === 'dark' ? '#f7fafc' : '#2d3748'} />
         </TouchableOpacity>
-        <ThemedText type="subtitle" style={styles.title}>Add Medication Schedule</ThemedText>
+        <ThemedText type="subtitle" style={styles.title}>
+        {isEditMode ? 'Edit Medication Schedule' : 'Add Medication Schedule'}
+        </ThemedText>
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Medication Selection */}
         <View style={styles.section}>
           <Text style={[
             styles.label,
@@ -255,8 +432,6 @@ export default function AddScheduleScreen() {
             <Ionicons name="chevron-down" size={20} color="#6b7280" />
           </TouchableOpacity>
         </View>
-
-        {/* Dosage Selection */}
         {selectedMedication && (
           <View style={styles.section}>
             <Text style={[
@@ -265,38 +440,84 @@ export default function AddScheduleScreen() {
             ]}>
               Dosage <Text style={styles.requiredStar}>*</Text>
             </Text>
-            {dosages.length > 0 ? (
-              <View style={[
-                styles.pickerContainer,
-                scheme === 'dark' ? styles.pickerContainerDark : styles.pickerContainerLight
-              ]}>
-                {dosages.map((item) => {
-                  let dosageText = '';
-                  if (item.fixedDose) {
-                    dosageText = `${item.fixedDose} ${item.unit}`;
-                  } else if (item.perKg) {
-                    dosageText = `${item.perKg} ${item.unit}/kg`;
-                  }
-                  
-                  return (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={[
-                        styles.dosageOption,
-                        selectedDosage === dosageText && styles.dosageOptionSelected
-                      ]}
-                      onPress={() => setSelectedDosage(dosageText)}
-                    >
-                      <Text style={styles.dosageOptionText}>{dosageText} ({item.usage})</Text>
-                      {selectedDosage === dosageText && (
-                        <Ionicons name="checkmark" size={20} color="#10b981" />
-                      )}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            ) : (
-              <TextInput
+            {!hasCalculatedDose && (
+            <TouchableOpacity 
+                style={[
+                  styles.calculateButton,
+                  scheme === 'dark' ? styles.calculateButtonDark : styles.calculateButtonLight
+                ]}
+                onPress={() => router.push(`/medication/${selectedMedication.name}?fromSchedule=true`)}
+              >
+                <Ionicons name="calculator-outline" size={20} color="#3b82f6" />
+                <Text style={styles.calculateButtonText}>Calculate Correct Dosage</Text>
+            </TouchableOpacity>
+            )}
+             {/* Show calculated dosage as the main selected option */}
+    {hasCalculatedDose && calculatedDosage && (
+      <View style={styles.calculatedDosageContainer}>
+        <TouchableOpacity
+          style={[
+            styles.calculatedDosageOption,
+            styles.calculatedDosageOptionSelected
+          ]}
+          onPress={() => {
+            setSelectedDosage(calculatedDosage);
+            setCustomDosage(calculatedDosage);
+          }}
+        >
+          <View style={styles.calculatedDosageContent}>
+            <View style={styles.calculatedDosageTextContainer}>
+              <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+              <Text style={styles.calculatedDosageText}>{calculatedDosage}</Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.recalculateButton}
+              onPress={() => router.push(`/medication/${selectedMedication.name}?fromSchedule=true`)}
+            >
+              <Ionicons name="create-outline" size={16} color="#6b7280" />
+              <Text style={styles.recalculateButtonText}>Recalculate</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </View>
+    )}
+
+    {/* Standard dosage options - Only show if no calculated dose exists */}
+    {!hasCalculatedDose && dosages.length > 0 && (
+      <View style={[
+        styles.pickerContainer,
+        scheme === 'dark' ? styles.pickerContainerDark : styles.pickerContainerLight
+      ]}>
+        {dosages.map((item) => {
+          let dosageText = '';
+          if (item.fixedDose) {
+            dosageText = `${item.fixedDose} ${item.unit}`;
+          } else if (item.perKg) {
+            dosageText = `${item.perKg} ${item.unit}/kg`;
+          }
+          
+          return (
+            <TouchableOpacity
+              key={item.id}
+              style={[
+                styles.dosageOption,
+                selectedDosage === dosageText && styles.dosageOptionSelected
+              ]}
+              onPress={() => setSelectedDosage(dosageText)}
+            >
+              <Text style={styles.dosageOptionText}>{dosageText} ({item.usage})</Text>
+              {selectedDosage === dosageText && (
+                <Ionicons name="checkmark" size={20} color="#10b981" />
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    )}
+
+    {/* Manual input - Only show if no calculated dose exists */}
+    {!hasCalculatedDose && dosages.length === 0 && (
+      <TextInput
                 style={[
                   styles.textInput,
                   scheme === 'dark' ? styles.textInputDark : styles.textInputLight
@@ -309,8 +530,6 @@ export default function AddScheduleScreen() {
             )}
           </View>
         )}
-
-        {/* Time Selection */}
         <View style={styles.section}>
           <Text style={[
             styles.label,
@@ -333,8 +552,6 @@ export default function AddScheduleScreen() {
             </Text>
             <Ionicons name="time-outline" size={20} color="#6b7280" />
           </TouchableOpacity>
-          
-          {/* Time Picker Modal for iOS */}
           {Platform.OS === 'ios' && renderPickerModal(
             showTimePicker,
             () => setShowTimePicker(false),
@@ -346,8 +563,6 @@ export default function AddScheduleScreen() {
               style={styles.picker}
             />
           )}
-          
-          {/* Android Time Picker */}
           {Platform.OS === 'android' && showTimePicker && (
             <DateTimePicker
               value={scheduleTime}
@@ -357,8 +572,6 @@ export default function AddScheduleScreen() {
             />
           )}
         </View>
-
-        {/* Frequency Selection */}
         <View style={styles.section}>
           <Text style={[
             styles.label,
@@ -393,7 +606,6 @@ export default function AddScheduleScreen() {
           </View>
         </View>
 
-        {/* Start Date */}
         <View style={styles.section}>
           <Text style={[
             styles.label,
@@ -417,7 +629,6 @@ export default function AddScheduleScreen() {
             <Ionicons name="calendar-outline" size={20} color="#6b7280" />
           </TouchableOpacity>
           
-          {/* Start Date Picker Modal for iOS */}
           {Platform.OS === 'ios' && renderPickerModal(
             showStartDatePicker,
             () => setShowStartDatePicker(false),
@@ -429,8 +640,6 @@ export default function AddScheduleScreen() {
               style={styles.picker}
             />
           )}
-          
-          {/* Android Start Date Picker */}
           {Platform.OS === 'android' && showStartDatePicker && (
             <DateTimePicker
               value={startDate}
@@ -441,7 +650,6 @@ export default function AddScheduleScreen() {
           )}
         </View>
 
-        {/* End Date (Optional) */}
         <View style={styles.section}>
           <View style={styles.endDateHeader}>
             <Text style={[
@@ -473,7 +681,6 @@ export default function AddScheduleScreen() {
             <Ionicons name="calendar-outline" size={20} color="#6b7280" />
           </TouchableOpacity>
           
-          {/* End Date Picker Modal for iOS */}
           {Platform.OS === 'ios' && renderPickerModal(
             showEndDatePicker,
             () => setShowEndDatePicker(false),
@@ -486,7 +693,6 @@ export default function AddScheduleScreen() {
             />
           )}
           
-          {/* Android End Date Picker */}
           {Platform.OS === 'android' && showEndDatePicker && (
             <DateTimePicker
               value={endDate || new Date()}
@@ -497,7 +703,6 @@ export default function AddScheduleScreen() {
           )}
         </View>
 
-        {/* Add Button */}
         <TouchableOpacity
           style={[styles.addButton, loading && styles.addButtonDisabled]}
           onPress={handleAddSchedule}
@@ -507,14 +712,15 @@ export default function AddScheduleScreen() {
             <ActivityIndicator color="white" />
           ) : (
             <>
-              <Ionicons name="add-circle" size={20} color="white" />
-              <Text style={styles.addButtonText}>Add to Schedule</Text>
+              <Ionicons name={isEditMode ? "checkmark-circle" : "add-circle"} size={20} color="white" />
+              <Text style={styles.addButtonText}>
+                {isEditMode ? 'Update Schedule' : 'Add to Schedule'}
+              </Text>
             </>
           )}
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Medication Selection Modal */}
       <Modal
         visible={showMedicationModal}
         animationType="slide"
@@ -736,7 +942,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#2d3748',
   },
-  // New styles for centered picker modals
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -777,6 +982,88 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   requiredStar: {
-  color: '#ef4444', // red color
+  color: '#ef4444', 
+},
+calculateButton: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: 12,
+  borderRadius: 8,
+  borderWidth: 1,
+  marginBottom: 12,
+  gap: 8,
+},
+calculateButtonLight: {
+  backgroundColor: '#f0f9ff',
+  borderColor: '#bae6fd',
+},
+calculateButtonDark: {
+  backgroundColor: '#1e3a8a',
+  borderColor: '#3b82f6',
+},
+calculateButtonText: {
+  fontSize: 14,
+  fontWeight: '600',
+  color: '#3b82f6',
+},
+dosageTextContainer: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 8,
+},
+calculatedBadge: {
+  fontSize: 12,
+  fontWeight: '600',
+  color: '#3b82f6',
+  backgroundColor: '#dbeafe',
+  paddingHorizontal: 6,
+  paddingVertical: 2,
+  borderRadius: 4,
+},
+calculatedDosageContainer: {
+  marginBottom: 12,
+},
+calculatedDosageOption: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: 16,
+  borderRadius: 12,
+  borderWidth: 2,
+},
+calculatedDosageOptionSelected: {
+  backgroundColor: '#e6fffa',
+  borderColor: '#10b981',
+},
+calculatedDosageContent: {
+  flex: 1,
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+},
+calculatedDosageTextContainer: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 8,
+  flex: 1,
+},
+calculatedDosageText: {
+  fontSize: 16,
+  fontWeight: '600',
+  color: '#065f46',
+},
+recalculateButton: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 4,
+  padding: 6,
+  borderRadius: 6,
+  backgroundColor: '#f8f9fa',
+},
+recalculateButtonText: {
+  fontSize: 12,
+  fontWeight: '500',
+  color: '#6b7280',
 },
 });

@@ -36,6 +36,26 @@ const [medication, setMedication] = useState<{
   contraindications?: string;
   minCert?: number;
 } | null>(null);
+// Check if coming from schedule page
+const { fromSchedule } = useLocalSearchParams<{ fromSchedule?: string }>();
+
+// Handle using calculated dose
+const handleUseThisDose = () => {
+  if (!result?.dose || !result?.unit) {
+    Alert.alert('Error', 'Please calculate a valid dose first');
+    return;
+  }
+  
+  const calculatedDose = `${result.dose} ${result.unit}`.trim();
+  
+  router.replace({
+    pathname: '/(tabs)/add_schedule',
+    params: { 
+      calculatedDose,
+      medicationName: name as string
+    }
+  });
+};
 
 useEffect(() => {
   const loadMedication = async () => {
@@ -302,6 +322,14 @@ const handleAgeChange = (text: string) => {
               {result.dose} {result.unit}
             </Text>
           </View>
+          {fromSchedule === 'true' && (
+            <TouchableOpacity
+              style={[styles.useDoseButton, { backgroundColor: scheme === "dark" ? "#3b82f6" : "#007AFF" }]}
+              onPress={handleUseThisDose}
+            >
+              <Text style={styles.useDoseButtonText}>Use This Dose</Text>
+            </TouchableOpacity>
+          )}
           {isFixedDose && (
             <ThemedText style={styles.resultNote}>
               This medication has a fixed standard dose.
@@ -466,7 +494,19 @@ const styles = StyleSheet.create({
     borderColor: 'gray',
     borderRadius: 4,
     color: 'black',
-    paddingRight: 30, // to ensure the text is never behind the icon
+    paddingRight: 30, 
     backgroundColor: 'white'
-  }
+  },
+  useDoseButton: {
+  padding: 16,
+  borderRadius: 12,
+  alignItems: 'center',
+  marginTop: 16,
+  marginHorizontal: 8,
+},
+useDoseButtonText: {
+  color: '#fff',
+  fontSize: 16,
+  fontWeight: '600',
+},
 });
