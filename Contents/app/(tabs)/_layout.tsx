@@ -221,6 +221,15 @@ export default function TabLayout() {
           ),
         }}
      />
+     <Tabs.Screen
+      name="contraindications"
+      options={{
+        title: "Contraindications",
+        tabBarIcon: ({ color }) => (
+          <IconSymbol size={28} name="exclamationmark.triangle" color={color} />
+        ),
+      }}
+    />
       <Tabs.Screen
         name="settings"
         options={{
