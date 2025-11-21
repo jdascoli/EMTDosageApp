@@ -52,6 +52,8 @@ export default function AddScheduleScreen() {
   const [dosages, setDosages] = useState<Dosage[]>([]);
   const [selectedDosage, setSelectedDosage] = useState<string>('');
   const [customDosage, setCustomDosage] = useState('');
+  const [calculatedDosage, setCalculatedDosage] = useState('');
+  const [hasCalculatedDose, setHasCalculatedDose] = useState(false);
   const [scheduleTime, setScheduleTime] = useState(new Date());
   const [frequency, setFrequency] = useState('daily');
   const [startDate, setStartDate] = useState(new Date());
@@ -74,6 +76,17 @@ export default function AddScheduleScreen() {
 
   loadDosages(selectedMedication.name);
   }, [selectedMedication]);
+
+useEffect(() => {
+  if (params.calculatedDose) {
+    const dose = params.calculatedDose as string;
+    setCalculatedDosage(dose);
+    setSelectedDosage(dose);
+    setHasCalculatedDose(true);
+    
+    setCustomDosage(dose);
+  }
+}, [params.calculatedDose]);
 
 const hasSetDosageFromEdit = useRef(false);
 const isEditModeRef = useRef(isEditMode);
@@ -427,38 +440,84 @@ const handleAddSchedule = async () => {
             ]}>
               Dosage <Text style={styles.requiredStar}>*</Text>
             </Text>
-            {dosages.length > 0 ? (
-              <View style={[
-                styles.pickerContainer,
-                scheme === 'dark' ? styles.pickerContainerDark : styles.pickerContainerLight
-              ]}>
-                {dosages.map((item) => {
-                  let dosageText = '';
-                  if (item.fixedDose) {
-                    dosageText = `${item.fixedDose} ${item.unit}`;
-                  } else if (item.perKg) {
-                    dosageText = `${item.perKg} ${item.unit}/kg`;
-                  }
-                  
-                  return (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={[
-                        styles.dosageOption,
-                        selectedDosage === dosageText && styles.dosageOptionSelected
-                      ]}
-                      onPress={() => setSelectedDosage(dosageText)}
-                    >
-                      <Text style={styles.dosageOptionText}>{dosageText} ({item.usage})</Text>
-                      {selectedDosage === dosageText && (
-                        <Ionicons name="checkmark" size={20} color="#10b981" />
-                      )}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            ) : (
-              <TextInput
+            {!hasCalculatedDose && (
+            <TouchableOpacity 
+                style={[
+                  styles.calculateButton,
+                  scheme === 'dark' ? styles.calculateButtonDark : styles.calculateButtonLight
+                ]}
+                onPress={() => router.push(`/medication/${selectedMedication.name}?fromSchedule=true`)}
+              >
+                <Ionicons name="calculator-outline" size={20} color="#3b82f6" />
+                <Text style={styles.calculateButtonText}>Calculate Correct Dosage</Text>
+            </TouchableOpacity>
+            )}
+             {/* Show calculated dosage as the main selected option */}
+    {hasCalculatedDose && calculatedDosage && (
+      <View style={styles.calculatedDosageContainer}>
+        <TouchableOpacity
+          style={[
+            styles.calculatedDosageOption,
+            styles.calculatedDosageOptionSelected
+          ]}
+          onPress={() => {
+            setSelectedDosage(calculatedDosage);
+            setCustomDosage(calculatedDosage);
+          }}
+        >
+          <View style={styles.calculatedDosageContent}>
+            <View style={styles.calculatedDosageTextContainer}>
+              <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+              <Text style={styles.calculatedDosageText}>{calculatedDosage}</Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.recalculateButton}
+              onPress={() => router.push(`/medication/${selectedMedication.name}?fromSchedule=true`)}
+            >
+              <Ionicons name="create-outline" size={16} color="#6b7280" />
+              <Text style={styles.recalculateButtonText}>Recalculate</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </View>
+    )}
+
+    {/* Standard dosage options - Only show if no calculated dose exists */}
+    {!hasCalculatedDose && dosages.length > 0 && (
+      <View style={[
+        styles.pickerContainer,
+        scheme === 'dark' ? styles.pickerContainerDark : styles.pickerContainerLight
+      ]}>
+        {dosages.map((item) => {
+          let dosageText = '';
+          if (item.fixedDose) {
+            dosageText = `${item.fixedDose} ${item.unit}`;
+          } else if (item.perKg) {
+            dosageText = `${item.perKg} ${item.unit}/kg`;
+          }
+          
+          return (
+            <TouchableOpacity
+              key={item.id}
+              style={[
+                styles.dosageOption,
+                selectedDosage === dosageText && styles.dosageOptionSelected
+              ]}
+              onPress={() => setSelectedDosage(dosageText)}
+            >
+              <Text style={styles.dosageOptionText}>{dosageText} ({item.usage})</Text>
+              {selectedDosage === dosageText && (
+                <Ionicons name="checkmark" size={20} color="#10b981" />
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    )}
+
+    {/* Manual input - Only show if no calculated dose exists */}
+    {!hasCalculatedDose && dosages.length === 0 && (
+      <TextInput
                 style={[
                   styles.textInput,
                   scheme === 'dark' ? styles.textInputDark : styles.textInputLight
@@ -924,5 +983,87 @@ const styles = StyleSheet.create({
   },
   requiredStar: {
   color: '#ef4444', 
+},
+calculateButton: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: 12,
+  borderRadius: 8,
+  borderWidth: 1,
+  marginBottom: 12,
+  gap: 8,
+},
+calculateButtonLight: {
+  backgroundColor: '#f0f9ff',
+  borderColor: '#bae6fd',
+},
+calculateButtonDark: {
+  backgroundColor: '#1e3a8a',
+  borderColor: '#3b82f6',
+},
+calculateButtonText: {
+  fontSize: 14,
+  fontWeight: '600',
+  color: '#3b82f6',
+},
+dosageTextContainer: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 8,
+},
+calculatedBadge: {
+  fontSize: 12,
+  fontWeight: '600',
+  color: '#3b82f6',
+  backgroundColor: '#dbeafe',
+  paddingHorizontal: 6,
+  paddingVertical: 2,
+  borderRadius: 4,
+},
+calculatedDosageContainer: {
+  marginBottom: 12,
+},
+calculatedDosageOption: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: 16,
+  borderRadius: 12,
+  borderWidth: 2,
+},
+calculatedDosageOptionSelected: {
+  backgroundColor: '#e6fffa',
+  borderColor: '#10b981',
+},
+calculatedDosageContent: {
+  flex: 1,
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+},
+calculatedDosageTextContainer: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 8,
+  flex: 1,
+},
+calculatedDosageText: {
+  fontSize: 16,
+  fontWeight: '600',
+  color: '#065f46',
+},
+recalculateButton: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 4,
+  padding: 6,
+  borderRadius: 6,
+  backgroundColor: '#f8f9fa',
+},
+recalculateButtonText: {
+  fontSize: 12,
+  fontWeight: '500',
+  color: '#6b7280',
 },
 });
