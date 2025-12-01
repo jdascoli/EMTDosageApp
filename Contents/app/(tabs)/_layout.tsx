@@ -226,7 +226,7 @@ export default function TabLayout() {
       options={{
         title: "Contraindications",
         tabBarIcon: ({ color }) => (
-          <IconSymbol size={28} name="exclamationmark.triangle" color={color} />
+          <IconSymbol size={28} name="exclamationmark.triangle.fill" color={color} />
         ),
       }}
     />
