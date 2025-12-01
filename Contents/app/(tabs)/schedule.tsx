@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, useColorSche
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { Ionicons } from '@expo/vector-icons';
-import { getUserSchedules, markScheduleAsTaken, deactivateSchedule, undoMarkAsTaken, updateTakenTime } from '@/database/schedule';
+import { getUserSchedules, markScheduleAsTaken, deactivateSchedule, undoMarkAsTaken, updateTakenTime, getUserSchedulesForDateRange } from '@/database/schedule';
 import { getCurrentUserId } from '@/lib/session';
 import { router, useFocusEffect } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -16,6 +16,7 @@ interface ScheduleItem {
   schedule_time: string;
   frequency: string;
   start_date: string;
+  end_date?: string; 
   current_status: 'scheduled' | 'taken' | 'missed';
   last_taken?: string;
 }
@@ -30,6 +31,7 @@ export default function ScheduleScreen() {
   const scheme = useColorScheme();
   const schedulesRef = useRef<ScheduleItem[]>([]);
   const authAlertShownRef = useRef(false);
+  const [editingScheduledDate, setEditingScheduledDate] = useState<string | null>(null);
 
   useEffect(() => {
     loadUserSchedules();
@@ -99,95 +101,85 @@ export default function ScheduleScreen() {
   };
 }, []);
 
-  const loadUserSchedules = async () => {
-    try {
-      setLoading(true);
-      const currentUserId = await getCurrentUserId();
-      
-      if (!currentUserId) {
-        if (!authAlertShownRef.current) {
+const loadUserSchedules = async () => {
+  try {
+    setLoading(true);
+    const currentUserId = await getCurrentUserId();
+    
+    if (!currentUserId) {
+      if (!authAlertShownRef.current) {
         authAlertShownRef.current = true;
         Alert.alert(
-            'Authentication Required', 
-            'Please log in to view your medication schedule',
-            [
-              {
-                text: 'OK',
-                onPress: () => router.replace('/login')
-              }
-            ]
-          );
-        }
-        setSchedules([]);
-        setLoading(false);
-        return;
+          'Authentication Required', 
+          'Please log in to view your medication schedule',
+          [
+            {
+              text: 'OK',
+              onPress: () => router.replace('/login')
+            }
+          ]
+        );
       }
-      authAlertShownRef.current = false;
-      
-
-      const userSchedules = await getUserSchedules(currentUserId);
-      
-      const processedSchedules = (userSchedules as ScheduleItem[]).map(schedule => {
-        if (schedule.current_status === 'taken') return schedule;
-
-        const scheduleDate = new Date(schedule.start_date);
-        const [hours, minutes] = schedule.schedule_time.split(':').map(Number);
-        const scheduledStart = new Date(scheduleDate);
-        scheduledStart.setHours(hours, minutes, 0, 0);
-        const scheduledEnd = new Date(scheduledStart.getTime() + 59_999);
-
-        let correctStatus: 'scheduled' | 'missed' = 'scheduled';
-        if (currentTime.getTime() > scheduledEnd.getTime()) {
-          correctStatus = 'missed';
-        }
-
-        return { ...schedule, current_status: correctStatus };
-      });
-
-      setSchedules(processedSchedules);
-    } catch (error) {
-      console.error('Error loading schedules:', error);
-      Alert.alert('Error', 'Failed to load your medication schedule');
-    } finally {
+      setSchedules([]);
       setLoading(false);
-      setRefreshing(false);
+      return;
     }
-  };
+    authAlertShownRef.current = false;
+
+    const startDate = new Date();
+    startDate.setHours(0, 0, 0, 0); 
+    
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + 4); 
+    endDate.setHours(23, 59, 59, 999); 
+
+    console.log('DEBUG: Date range for schedules:', {
+      startDate: startDate.toISOString().split('T')[0],
+      endDate: endDate.toISOString().split('T')[0],
+      range: 'Today + next 4 days (5 days total)'
+    });
+
+    const userSchedules = await getUserSchedulesForDateRange(
+      currentUserId as number,
+      startDate.toISOString().split('T')[0], 
+      endDate.toISOString().split('T')[0]
+    );
+    
+    setSchedules(userSchedules as ScheduleItem[]);
+  } catch (error) {
+    console.error('Error loading schedules:', error);
+    Alert.alert('Error', 'Failed to load your medication schedule');
+  } finally {
+    setLoading(false);
+    setRefreshing(false);
+  }
+};
 
   const handleRefresh = () => {
     setRefreshing(true);
     loadUserSchedules();
   };
 
-const handleToggleTaken = async (scheduleId: number, medicationName: string, currentStatus: 'scheduled' | 'taken' | 'missed') => {
+const handleToggleTaken = async (uniqueId: number, scheduledDate: string, medicationName: string, currentStatus: 'scheduled' | 'taken' | 'missed') => {
   try {
+    const originalScheduleId = getOriginalScheduleId(uniqueId);
+    
     if (currentStatus === 'taken') {
-      await undoMarkAsTaken(scheduleId);
+      await undoMarkAsTaken(originalScheduleId, scheduledDate);
       
       setSchedules(prev => prev.map(schedule => {
-        if (schedule.id === scheduleId) {
-          const scheduleDate = new Date(schedule.start_date);
-          const [hours, minutes] = schedule.schedule_time.split(':').map(Number);
-          const scheduledStart = new Date(scheduleDate);
-          scheduledStart.setHours(hours, minutes, 0, 0);
-          const scheduledEnd = new Date(scheduledStart.getTime() + 59_999);
-          
-          let correctStatus: 'scheduled' | 'missed' = 'scheduled';
-          if (currentTime.getTime() > scheduledEnd.getTime()) {
-            correctStatus = 'missed';
-          }
-          
-          return { ...schedule, current_status: correctStatus, last_taken: undefined };
+        if (schedule.id === uniqueId) {
+          return { ...schedule, current_status: 'missed', last_taken: undefined };
         }
         return schedule;
       }));
       
       Alert.alert('Status Updated', `${medicationName} has been marked as not taken.`);
     } else {
-      await markScheduleAsTaken(scheduleId, `Taken on ${new Date().toLocaleString()}`);
+      await markScheduleAsTaken(originalScheduleId, scheduledDate, `Taken on ${new Date().toLocaleString()}`);
       
       setSchedules(prev => prev.map(schedule => 
-        schedule.id === scheduleId 
+        schedule.id === uniqueId
           ? { ...schedule, current_status: 'taken', last_taken: new Date().toISOString() }
           : schedule
       ));
@@ -206,15 +198,17 @@ const handleTimeSave = async () => {
   setShowTimeModal(false);
   setEditingScheduleId(null);
 };
+
 const handleTimeChange = async (selectedDate?: Date) => {
-  if (selectedDate && editingScheduleId) {
+  if (selectedDate && editingScheduleId && editingScheduledDate) {
     const isoTime = selectedDate.toISOString();
+    const originalScheduleId = getOriginalScheduleId(editingScheduleId);
     
     try {
-      await updateTakenTime(editingScheduleId, isoTime);
+      await updateTakenTime(originalScheduleId, editingScheduledDate, isoTime);
       
       setSchedules(prev => prev.map(schedule => 
-        schedule.id === editingScheduleId 
+        schedule.id === editingScheduleId
           ? { ...schedule, last_taken: isoTime }
           : schedule
       ));
@@ -226,41 +220,54 @@ const handleTimeChange = async (selectedDate?: Date) => {
     }
   }
 };
-  const handleDeleteSchedule = async (scheduleId: number, medicationName: string) => {
-    Alert.alert(
-      'Delete Medication Schedule',
-      `Are you sure you want to delete the schedule for ${medicationName}?`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
+
+const handleDeleteSchedule = async (uniqueId: number, medicationName: string) => {
+  const originalScheduleId = getOriginalScheduleId(uniqueId);
+  
+  Alert.alert(
+    'Delete Medication Schedule',
+    `Are you sure you want to delete ALL schedule entries for ${medicationName}?`,
+    [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deactivateSchedule(originalScheduleId);
+            
+            setSchedules(prev => prev.filter(schedule => 
+              getOriginalScheduleId(schedule.id) !== originalScheduleId
+            ));
+            
+            Alert.alert('Deleted', `${medicationName} schedule has been deleted.`);
+          } catch (error) {
+            console.error('Error deleting schedule:', error);
+            Alert.alert('Error', 'Failed to delete medication schedule');
+          }
         },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deactivateSchedule(scheduleId);
-              
-              setSchedules(prev => prev.filter(schedule => schedule.id !== scheduleId));
-              
-              Alert.alert('Deleted', `${medicationName} schedule has been deleted.`);
-            } catch (error) {
-              console.error('Error deleting schedule:', error);
-              Alert.alert('Error', 'Failed to delete medication schedule');
-            }
-          },
-        },
-      ]
-    );
-  };
+      },
+    ]
+  );
+};
+
+const getOriginalScheduleId = (uniqueId: number): number => {
+  const idStr = uniqueId.toString();
+  const match = idStr.match(/^(\d+)\d{8}\d{4}$/);
+  return match ? parseInt(match[1]) : uniqueId;
+};
 
 const handleEditSchedule = (schedule: ScheduleItem) => {
+  const originalScheduleId = getOriginalScheduleId(schedule.id);
+  
   router.push({
     pathname: '/(tabs)/add_schedule',
     params: { 
       editMode: 'true',
-      scheduleId: schedule.id.toString(),
+      scheduleId: originalScheduleId.toString(),
       medicationName: schedule.medicationName,
       dosage: schedule.dosage,
       scheduleTime: schedule.schedule_time,
@@ -270,98 +277,112 @@ const handleEditSchedule = (schedule: ScheduleItem) => {
   });
 };
 
-  const formatTimeForDisplay = (time24: string) => {
-    const [hours, minutes] = time24.split(':');
-    const hour = parseInt(hours);
-    const period = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = hour % 12 || 12;
-    return `${displayHour}:${minutes} ${period}`;
-  };
+const formatTimeForDisplay = (time24: string) => {
+  const [hours, minutes] = time24.split(':');
+  const hour = parseInt(hours);
+  const period = hour >= 12 ? 'PM' : 'AM';
+  const displayHour = hour % 12 || 12;
+  return `${displayHour}:${minutes} ${period}`;
+};
 
-  const isDueNow = (scheduleTime?: string, startDate?: string) => {
-    if (!scheduleTime || !startDate) return false;
-    const scheduleDate = new Date(startDate);
-    const [hours, minutes] = scheduleTime.split(':').map(Number);
-    const scheduledStart = new Date(scheduleDate);
-    scheduledStart.setHours(hours, minutes, 0, 0);
-    const scheduledEnd = new Date(scheduledStart.getTime() + 59_999);
+const isDueNow = (scheduleTime?: string, startDate?: string) => {
+  if (!scheduleTime || !startDate) return false;
+  const scheduleDate = new Date(startDate);
+  const [hours, minutes] = scheduleTime.split(':').map(Number);
+  const scheduledStart = new Date(scheduleDate);
+  scheduledStart.setHours(hours, minutes, 0, 0);
+  const scheduledEnd = new Date(scheduledStart.getTime() + 59_999);
 
-    const now = new Date();
-    return now.getTime() >= scheduledStart.getTime() && now.getTime() <= scheduledEnd.getTime();
-  };
+  const now = new Date();
+  return now.getTime() >= scheduledStart.getTime() && now.getTime() <= scheduledEnd.getTime();
+};
 
-   const getStatusColor = (status: string, scheduleTime?: string, startDate?: string) => {
-    switch (status) {
-      case 'taken': return '#10b981'; 
-      case 'missed': return '#ef4444'; 
-      case 'scheduled': 
-        if (isDueNow(scheduleTime, startDate)) return '#f59e0b'; 
-        return '#3b82f6'; 
-      default: return '#3b82f6';
+const getStatusColor = (status: string, scheduleTime?: string, startDate?: string) => {
+  switch (status) {
+    case 'taken': return '#10b981'; 
+    case 'missed': return '#ef4444'; 
+    case 'scheduled': 
+      if (isDueNow(scheduleTime, startDate)) return '#f59e0b'; 
+      return '#3b82f6'; 
+    default: return '#3b82f6';
+  }
+};
+
+const getStatusText = (status: string, scheduleTime?: string, startDate?: string) => {
+  switch (status) {
+    case 'taken': return 'Taken';
+    case 'missed': return 'Missed';
+    case 'scheduled': 
+      if (isDueNow(scheduleTime, startDate)) return 'Due Now';
+      return 'Upcoming';
+    default: return 'Upcoming';
+  }
+};
+
+const getButtonText = (status: string) => {
+  switch (status) {
+    case 'taken': return 'Taken';
+    case 'missed': return 'Missed';
+    case 'scheduled': return 'Mark Taken';
+    default: return 'Mark Taken';
+  }
+};
+
+const groupSchedulesByDate = () => {
+  const grouped = schedules.reduce((acc, schedule) => {
+    const dateKey = new Date(schedule.start_date).toDateString();
+    if (!acc[dateKey]) {
+      acc[dateKey] = [];
     }
-  };
+    acc[dateKey].push(schedule);
+    return acc;
+  }, {} as Record<string, ScheduleItem[]>);
 
-  const getStatusText = (status: string, scheduleTime?: string, startDate?: string) => {
-    switch (status) {
-      case 'taken': return 'Taken';
-      case 'missed': return 'Missed';
-      case 'scheduled': 
-        if (isDueNow(scheduleTime, startDate)) return 'Due Now';
-        return 'Upcoming';
-      default: return 'Upcoming';
-    }
-  };
+  const today = new Date().toDateString();
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toDateString();
 
-  const getButtonText = (status: string) => {
-    switch (status) {
-      case 'taken': return 'Taken';
-      case 'missed': return 'Missed';
-      case 'scheduled': return 'Mark Taken';
-      default: return 'Mark Taken';
-    }
-  };
+  return Object.entries(grouped)
+    .map(([dateKey, data]) => {
+      const scheduleDate = new Date(dateKey);
+      const isToday = dateKey === today;
+      const isYesterday = dateKey === yesterdayStr;
 
-  const groupSchedulesByDate = () => {
-    const grouped = schedules.reduce((acc, schedule) => {
-      const date = new Date(schedule.start_date).toDateString();
-      if (!acc[date]) {
-        acc[date] = [];
-      }
-      acc[date].push(schedule);
-      return acc;
-    }, {} as Record<string, ScheduleItem[]>);
-
-    const today = new Date().toDateString();
-
-    return Object.entries(grouped)
-      .map(([date, data]) => {
-        const scheduleDate = new Date(date);
-        const isToday = date === today;
-
-        const title = isToday
-        ? `Today • ${scheduleDate.toLocaleDateString('en-US', { 
+      let title = '';
+      if (isYesterday) {
+        title = `Yesterday • ${scheduleDate.toLocaleDateString('en-US', { 
           weekday: 'long', 
           year: 'numeric', 
           month: 'long', 
           day: 'numeric' 
-        })}`
-
-      : scheduleDate.toLocaleDateString('en-US', { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-          });
+        })}`;
+      } else if (isToday) {
+        title = `Today • ${scheduleDate.toLocaleDateString('en-US', { 
+          weekday: 'long', 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        })}`;
+      } else {
+        title = scheduleDate.toLocaleDateString('en-US', { 
+          weekday: 'long', 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        });
+      }
 
       return {
         title,
         data,
         date: scheduleDate,
-        isToday
+        isToday,
+        isYesterday
       };
     })
-      .sort((a, b) => a.date.getTime() - b.date.getTime());
-  };
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+};
 
   const renderScheduleItem = ({ item }: { item: ScheduleItem }) => (
     <View style={[
@@ -398,6 +419,7 @@ const handleEditSchedule = (schedule: ScheduleItem) => {
           style={styles.editTimeButton}
         onPress={() => {
           setEditingScheduleId(item.id);
+          setEditingScheduledDate(item.start_date);
           setShowTimeModal(true);
         }}
       >
@@ -411,7 +433,7 @@ const handleEditSchedule = (schedule: ScheduleItem) => {
     {(item.current_status === 'scheduled' || item.current_status === 'missed' || item.current_status === 'taken') && (
       <TouchableOpacity 
         style={styles.takenButton}
-        onPress={() => handleToggleTaken(item.id, item.medicationName, item.current_status)}
+        onPress={() => handleToggleTaken(item.id, item.start_date, item.medicationName, item.current_status)}
       >
         <Ionicons 
           name={

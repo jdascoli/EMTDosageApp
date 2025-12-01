@@ -36,10 +36,9 @@ const [medication, setMedication] = useState<{
   contraindications?: string;
   minCert?: number;
 } | null>(null);
-// Check if coming from schedule page
+
 const { fromSchedule } = useLocalSearchParams<{ fromSchedule?: string }>();
 
-// Handle using calculated dose
 const handleUseThisDose = () => {
   if (!result?.dose || !result?.unit) {
     Alert.alert('Error', 'Please calculate a valid dose first');
@@ -47,12 +46,12 @@ const handleUseThisDose = () => {
   }
   
   const calculatedDose = `${result.dose} ${result.unit}`.trim();
-  
-  router.replace({
+
+  router.navigate({
     pathname: '/(tabs)/add_schedule',
     params: { 
       calculatedDose,
-      medicationName: name as string
+      medicationName: name as string,
     }
   });
 };
@@ -72,12 +71,11 @@ const handleAgeChange = (text: string) => {
     const numeric = parseInt(text) || 0;
     const displayValue = numeric > 99 ? "99" : numeric.toString();
     setAge(displayValue);
-    setResult(null);// initialize
+    setResult(null);
   }
 };
 
 
-// Handle lb input - integers only
   const handleLbsChange = (text: string) => {
     
     if (text === "" || /^\d+$/.test(text)){
@@ -413,7 +411,6 @@ const styles = StyleSheet.create({
     width: 200,
     alignSelf: "center",
   },
-  // Result container appears under the button
   resultContainer: {
     marginTop: 20,
     marginBottom: 20,
